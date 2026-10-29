@@ -42,4 +42,9 @@ func Register(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 
 	// Everything else requires a bearer token.
 	e.Use(middleware.AuthJWT([]byte(cfg.JWTSecret), middleware.AuthSkipper))
+
+	// CRUD: products.
+	if db != nil {
+		handler.RegisterProducts(e, db)
+	}
 }
