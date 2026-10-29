@@ -1,0 +1,18 @@
+# binary
+/api
+*.exe
+*.test
+*.out
+
+# env
+.env
+.env.*
+!.env.example
+
+# tooling
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+**/*.md
