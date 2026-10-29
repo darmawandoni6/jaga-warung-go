@@ -9,23 +9,30 @@ import (
 
 // Config is the process environment, loaded once at startup.
 type Config struct {
-	DatabaseURL string
-	Port        string
-	LogLevel    slog.Level
-	JWTSecret   string
-	AccessTTL   time.Duration
-	RefreshTTL  time.Duration
+	DatabaseURL   string
+	Port          string
+	LogLevel      slog.Level
+	JWTSecret     string
+	AccessTTL     time.Duration
+	RefreshTTL    time.Duration
+	AdminPhone    string
+	AdminPassword string
 }
 
 // Load reads env vars and fails fast on anything missing or malformed.
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL: env("DATABASE_URL", "host=localhost user=postgres password=postgres dbname=jaga_warung port=5432 sslmode=disable TimeZone=Asia/Jakarta"),
-		Port:        env("PORT", "8080"),
-		JWTSecret:   os.Getenv("JWT_SECRET"),
+		DatabaseURL:   env("DATABASE_URL", "host=localhost user=postgres password=postgres dbname=jaga_warung port=5432 sslmode=disable TimeZone=Asia/Jakarta"),
+		Port:          env("PORT", "8080"),
+		JWTSecret:     env("JWT_SECRET", ""),
+		AdminPhone:    env("ADMIN_PHONE", ""),
+		AdminPassword: env("ADMIN_PASSWORD", ""),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, errors.New("JWT_SECRET is required")
+	}
+	if cfg.AdminPhone == "" || cfg.AdminPassword == "" {
+		return nil, errors.New("ADMIN_PHONE and ADMIN_PASSWORD are required")
 	}
 
 	var err error

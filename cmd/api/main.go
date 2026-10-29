@@ -28,9 +28,13 @@ func main() {
 		slog.Error("migrate", "err", err)
 		os.Exit(1)
 	}
+	if err := database.Seed(db, cfg); err != nil {
+		slog.Error("seed", "err", err)
+		os.Exit(1)
+	}
 
 	e := echo.New()
-	router.Register(e)
+	router.Register(e, db, cfg)
 	slog.Info("listening", "port", cfg.Port)
 	if err := e.Start(":" + cfg.Port); err != nil {
 		slog.Error("serve", "err", err)

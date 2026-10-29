@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: docker.io/library/postgres:17-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -17,15 +17,14 @@ services:
 
   api:
     build: .
-    environment:
-      DATABASE_URL: host=db user=postgres password=postgres dbname=jaga_warung port=5432 sslmode=disable TimeZone=Asia/Jakarta
-      JWT_SECRET: dev-only
-      PORT: "8080"
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
+    # podman: privileged=false, no special caps needed
 
 volumes:
   pgdata:
