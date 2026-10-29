@@ -29,12 +29,12 @@ help:
 	@echo '  PASSWORD=...   seeded admin password'
 
 run:
-	JWT_SECRET=$(JWT) \
-	DATABASE_URL=$(DATABASE) \
-	PORT=$(PORT) \
+	JWT_SECRET="$(JWT)" \
+	DATABASE_URL="$(DATABASE)" \
+	PORT="$(PORT)" \
 	LOG_LEVEL=debug \
-	ADMIN_PHONE=$(PHONE) \
-	ADMIN_PASSWORD=$(PASSWORD) \
+	ADMIN_PHONE="$(PHONE)" \
+	ADMIN_PASSWORD="$(PASSWORD)" \
 	go run ./cmd/api
 
 build:
