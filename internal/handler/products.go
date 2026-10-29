@@ -92,11 +92,20 @@ func RegisterProducts(e *echo.Echo, db *gorm.DB) {
 			}
 			return dbError(err)
 		}
+		// PK and created_at are immutable: keep loaded values regardless of body.
+		savedBarcode, savedCreatedAt := product.Barcode, product.CreatedAt
 		if err := c.Bind(&product); err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, "bad request")
 		}
-		if err := db.Save(&product).Error; err != nil {
-			return dbError(err)
+		product.Barcode, product.CreatedAt = savedBarcode, savedCreatedAt
+		// Select forces every listed column into the UPDATE, so explicit
+		// 0/""/null in the body persist; barcode (PK) and created_at are
+		// excluded — immutable.
+		upd := db.Model(&product).
+			Select("Name", "BuyPrice", "SellPrice", "Stock", "MinStock", "Type", "Image", "UpdatedAt").
+			Save(&product)
+		if upd.Error != nil {
+			return dbError(upd.Error)
 		}
 		return c.JSON(http.StatusOK, product)
 	})
