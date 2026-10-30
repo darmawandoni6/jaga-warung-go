@@ -30,10 +30,10 @@ func (h *ProductHandler) List(c echo.Context) error {
 		return dbError(err)
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": result.Data,
-		"meta": result.Meta,
-	})
+	// Normalize through the usecase-resolved page/limit so meta matches the
+	// rows actually returned (the usecase clamps defaults).
+	meta := NewMeta(result.Meta.Page, result.Meta.Limit, result.Meta.Total)
+	return SuccessResponse(c, http.StatusOK, "products retrieved", result.Data, meta)
 }
 
 func (h *ProductHandler) LowStock(c echo.Context) error {
@@ -44,7 +44,7 @@ func (h *ProductHandler) LowStock(c echo.Context) error {
 		return dbError(err)
 	}
 
-	return c.JSON(http.StatusOK, products)
+	return SuccessResponse(c, http.StatusOK, "low stock products retrieved", products, nil)
 }
 
 func (h *ProductHandler) Create(c echo.Context) error {
@@ -78,7 +78,7 @@ func (h *ProductHandler) Create(c echo.Context) error {
 		return dbError(err)
 	}
 
-	return c.JSON(http.StatusCreated, product)
+	return SuccessResponse(c, http.StatusCreated, "product created", product, nil)
 }
 
 func (h *ProductHandler) Get(c echo.Context) error {
@@ -89,7 +89,7 @@ func (h *ProductHandler) Get(c echo.Context) error {
 		return dbError(err)
 	}
 
-	return c.JSON(http.StatusOK, product)
+	return SuccessResponse(c, http.StatusOK, "product retrieved", product, nil)
 }
 
 func (h *ProductHandler) Patch(c echo.Context) error {
@@ -121,7 +121,7 @@ func (h *ProductHandler) Patch(c echo.Context) error {
 		return dbError(err)
 	}
 
-	return c.JSON(http.StatusOK, product)
+	return SuccessResponse(c, http.StatusOK, "product updated", product, nil)
 }
 
 func (h *ProductHandler) Delete(c echo.Context) error {

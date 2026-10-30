@@ -7,6 +7,7 @@ import (
 	"jaga-warung-go/internal/domain"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
@@ -34,11 +35,11 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	return SuccessResponse(c, http.StatusOK, "login successful", map[string]any{
 		"access_token":  tokens.AccessToken,
 		"refresh_token": tokens.RefreshToken,
 		"expires_in":    tokens.ExpiresIn,
-	})
+	}, nil)
 }
 
 func (h *AuthHandler) Refresh(c echo.Context) error {
@@ -56,11 +57,11 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid refresh token")
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	return SuccessResponse(c, http.StatusOK, "token refreshed", map[string]any{
 		"access_token":  tokens.AccessToken,
 		"refresh_token": tokens.RefreshToken,
 		"expires_in":    tokens.ExpiresIn,
-	})
+	}, nil)
 }
 
 func (h *AuthHandler) Logout(c echo.Context) error {
@@ -89,6 +90,13 @@ func dbError(err error) *echo.HTTPError {
 		return echo.NewHTTPError(http.StatusConflict, "conflict")
 	case errors.Is(err, domain.ErrBadRequest):
 		return echo.NewHTTPError(http.StatusBadRequest, "bad request")
+	// GORM is opened with TranslateError: true, so unique/FK violations arrive
+	// as these sentinels instead of raw pgx errors. Without this they would
+	// surface as 500.
+	case errors.Is(err, gorm.ErrDuplicatedKey):
+		return echo.NewHTTPError(http.StatusConflict, "duplicate value")
+	case errors.Is(err, gorm.ErrForeignKeyViolated):
+		return echo.NewHTTPError(http.StatusConflict, "referenced record does not exist or is in use")
 	default:
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}

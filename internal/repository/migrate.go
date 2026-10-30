@@ -18,6 +18,7 @@ func SyncDatabase(db *gorm.DB) error {
 		&domain.Category{},
 		&domain.Product{},
 		&domain.Account{},
+		&domain.RefreshToken{},
 	)
 	if err != nil {
 		return fmt.Errorf("gagal auto-migrate: %w", err)

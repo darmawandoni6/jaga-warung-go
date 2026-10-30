@@ -21,9 +21,9 @@ type AuthTokens struct {
 	ExpiresIn    int64
 }
 
-// ProductUseCase is the port for product CRUD. The handler only touches this
-// port; the implementation in usecase/product_usecase.go delegates to the
-// repository after validation.
+// ProductUseCase is the port for product CRUD. The handler talks to
+// the repository through this port; product_usecase.go implements it
+// after validation.
 type ProductUseCase interface {
 	List(ctx context.Context, page, limit int, search string) (*ProductListResult, error)
 	Create(ctx context.Context, req *CreateProductRequest) (*Product, error)
@@ -31,6 +31,16 @@ type ProductUseCase interface {
 	Patch(ctx context.Context, barcode string, req *PatchProductRequest) (*Product, error)
 	Delete(ctx context.Context, barcode string) error
 	LowStock(ctx context.Context) ([]*Product, int64, error)
+}
+
+// CategoryUseCase is the port for category CRUD. category_usecase.go
+// implements it; the delivery layer talks only to this port.
+type CategoryUseCase interface {
+	List(ctx context.Context) ([]*Category, error)
+	Create(ctx context.Context, name string) (*Category, error)
+	Get(ctx context.Context, id int64) (*Category, error)
+	Patch(ctx context.Context, id int64, name string) (*Category, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 type ProductListResult struct {

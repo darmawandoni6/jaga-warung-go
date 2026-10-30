@@ -35,11 +35,13 @@ type ProductRepository interface {
 	All(ctx context.Context) []*Product // for migration seed, not a business query
 }
 
-// CategoryRepository persists categories. No handler calls it yet — exposed so
-// the usecase layer (Phase 5) can consume it without depending on infrastructure.
+// CategoryRepository persists categories. The handler talks through this
+// port; repository/category_repository.go implements it against GORM/Postgres.
 type CategoryRepository interface {
 	SeedDefaultCategories(ctx context.Context) error
 	Create(ctx context.Context, c *Category) error
-	FindAll(ctx context.Context) ([]*Category, error)
-	FindByID(ctx context.Context, id int64) (*Category, error)
+	List(ctx context.Context) ([]*Category, error)
+	Get(ctx context.Context, id int64) (*Category, error)
+	Update(ctx context.Context, c *Category) error
+	Delete(ctx context.Context, id int64) error
 }

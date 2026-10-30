@@ -20,9 +20,14 @@ import (
 )
 
 func main() {
-	// Init Logger & Load Config (.env)
+	// Init Logger & Load Config
 	cfg := config.LoadConfig()
 	logger.InitLogger(cfg)
+
+	// Fail fast: without these no login can ever succeed.
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Konfigurasi tidak valid: %v", err)
+	}
 
 	// Inisialisasi Database via GORM menggunakan cfg.DatabaseURL
 	db, err := config.InitDB(cfg)
@@ -36,7 +41,10 @@ func main() {
 	}
 
 	// Seed Data
-	repository.RunSeeders(db)
+	repository.RunSeeders(db, repository.SeedConfig{
+		AdminPhone:    cfg.AdminPhone,
+		AdminPassword: cfg.AdminPassword,
+	})
 
 	// Ambil instance sql.DB untuk kebutuhan Graceful Shutdown / close connection
 	sqlDB, err := db.DB()

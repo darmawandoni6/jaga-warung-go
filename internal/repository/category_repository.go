@@ -56,24 +56,49 @@ func (r *categoryRepo) Create(ctx context.Context, category *domain.Category) er
 	return nil
 }
 
-// FindAll mengambil semua data kategori
-func (r *categoryRepo) FindAll(ctx context.Context) ([]*domain.Category, error) {
+// FindAll returns all non-deleted categories (interface name: List).
+func (r *categoryRepo) List(ctx context.Context) ([]*domain.Category, error) {
 	var categories []*domain.Category
 	if err := r.db.WithContext(ctx).Find(&categories).Error; err != nil {
-		return nil, fmt.Errorf("categoryRepository.FindAll: %w", err)
+		return nil, fmt.Errorf("categoryRepository.List: %w", err)
 	}
 	return categories, nil
 }
 
-// FindByID mengambil data kategori berdasarkan ID
-func (r *categoryRepo) FindByID(ctx context.Context, id int64) (*domain.Category, error) {
+// FindByID returns one category by ID, ErrNotFound when missing (interface name: Get).
+func (r *categoryRepo) Get(ctx context.Context, id int64) (*domain.Category, error) {
 	var category domain.Category
 	err := r.db.WithContext(ctx).First(&category, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
+			return nil, domain.ErrNotFound
 		}
-		return nil, fmt.Errorf("categoryRepository.FindByID: %w", err)
+		return nil, fmt.Errorf("categoryRepository.Get: %w", err)
 	}
 	return &category, nil
+}
+
+// Update replaces mutable fields; ID and created_at are never touched.
+func (r *categoryRepo) Update(ctx context.Context, c *domain.Category) error {
+	res := r.db.WithContext(ctx).Model(c).Select("Name", "UpdatedAt").Save(c)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// Delete soft-deletes the category. The product FK uses ON DELETE SET NULL
+// on the client side — no RESTRICT cascade here.
+func (r *categoryRepo) Delete(ctx context.Context, id int64) error {
+	res := r.db.WithContext(ctx).Delete(&domain.Category{}, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }

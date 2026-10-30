@@ -46,8 +46,5 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	}
 
 	// Kirim response JSON yang terstruktur
-	_ = c.JSON(code, APIResponse{
-		Status:  code,
-		Message: message,
-	})
+	_ = ErrorResponse(c, code, message, nil)
 }
