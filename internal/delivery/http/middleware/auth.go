@@ -6,6 +6,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+
+	"jaga-warung-go/pkg/auth"
 )
 
 type ctxKey string
@@ -29,27 +31,37 @@ func AuthJWT(secret []byte, skipper func(echo.Context) bool) echo.MiddlewareFunc
 			if token == "" {
 				return c.NoContent(http.StatusUnauthorized)
 			}
-			tok, err := jwt.ParseWithClaims(token, jwt.MapClaims{}, func(t *jwt.Token) (any, error) {
-				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("bad method")
-				}
-				return secret, nil
-			}, jwt.WithExpirationRequired())
-			if err != nil || !tok.Valid {
-				return c.NoContent(http.StatusUnauthorized)
-			}
-			claims, ok := tok.Claims.(jwt.MapClaims)
-			if !ok || claims["type"] != "access" {
-				return c.NoContent(http.StatusUnauthorized)
-			}
-			sub, _ := claims["sub"].(string)
-			if sub == "" {
+			sub, err := auth.ParseAccess(secret, token)
+			if err != nil {
 				return c.NoContent(http.StatusUnauthorized)
 			}
 			SetAccount(c, sub)
 			return next(c)
 		}
 	}
+}
+
+// parseAccess wraps pkg/auth.ParseAccess so the middleware stays close to
+// jwt.ParseWithClaims' signature without re-implementing JWT validation.
+func parseAccess(secret []byte, tokenString string) (string, error) {
+	tok, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("bad method")
+		}
+		return secret, nil
+	}, jwt.WithExpirationRequired())
+	if err != nil || !tok.Valid {
+		return "", err
+	}
+	claims, ok := tok.Claims.(jwt.MapClaims)
+	if !ok || claims["type"] != "access" {
+		return "", fmt.Errorf("not access")
+	}
+	sub, _ := claims["sub"].(string)
+	if sub == "" {
+		return "", fmt.Errorf("missing sub")
+	}
+	return sub, nil
 }
 
 func AuthSkipper(c echo.Context) bool {

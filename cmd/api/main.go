@@ -1,43 +1,90 @@
 package main
 
 import (
-	"log/slog"
+	"context"
+	"fmt"
+	"jaga-warung-go/internal/config"
+	httpDelivery "jaga-warung-go/internal/delivery/http"
+	"jaga-warung-go/internal/repository"
+	"jaga-warung-go/pkg/logger"
+
+	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
-
-	"jaga-warung-go/internal/config"
-	"jaga-warung-go/internal/database"
-	"jaga-warung-go/internal/router"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
-		slog.Error("config", "err", err)
-		os.Exit(1)
-	}
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel})))
+	// Init Logger & Load Config (.env)
+	cfg := config.LoadConfig()
+	logger.InitLogger(cfg)
 
-	db, err := database.Connect(cfg.DatabaseURL)
+	// Inisialisasi Database via GORM menggunakan cfg.DatabaseURL
+	db, err := config.InitDB(cfg)
 	if err != nil {
-		slog.Error("connect", "err", err)
-		os.Exit(1)
-	}
-	if err := database.Migrate(db); err != nil {
-		slog.Error("migrate", "err", err)
-		os.Exit(1)
-	}
-	if err := database.Seed(db, cfg); err != nil {
-		slog.Error("seed", "err", err)
-		os.Exit(1)
+		log.Fatalf("Gagal inisialisasi database: %v", err)
 	}
 
+	// Sync Database Schema
+	if err := repository.SyncDatabase(db); err != nil {
+		log.Fatalf("Gagal sync database: %v", err)
+	}
+
+	// Seed Data
+	repository.RunSeeders(db)
+
+	// Ambil instance sql.DB untuk kebutuhan Graceful Shutdown / close connection
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Gagal mendapatkan sql.DB instance: %v", err)
+	}
+	defer sqlDB.Close()
+
+	// Setup Echo Engine & Middleware
 	e := echo.New()
-	router.Register(e, db, cfg)
-	slog.Info("listening", "port", cfg.Port)
-	if err := e.Start(":" + cfg.Port); err != nil {
-		slog.Error("serve", "err", err)
-		os.Exit(1)
+
+	e.HTTPErrorHandler = httpDelivery.CustomHTTPErrorHandler
+	e.Use(middleware.RequestLogger())
+	e.Use(middleware.Recover())
+
+	// Register Router & Pass DB ke SetupRouter
+	httpDelivery.SetupRouter(e, db, cfg)
+
+	// Setup net/http Server
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%s", cfg.Port),
+		Handler:      e,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  15 * time.Second,
 	}
+
+	// Run Server di goroutine
+	go func() {
+		log.Printf("Server berjalan di port %s...", cfg.Port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Mematikan server secara bertahap...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Shutdown forced: %v", err)
+	}
+
+	log.Println("Server berhasil dihentikan secara aman")
 }

@@ -9,11 +9,11 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"jaga-warung-go/internal/model"
+	"jaga-warung-go/internal/domain"
 )
 
 // SignAccess issues a short-lived access JWT carrying accountID as subject.
-func SignAccess(secret []byte, account *model.Account, ttlSec int64) (string, error) {
+func SignAccess(secret []byte, account *domain.Account, ttlSec int64) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":  account.ID,
 		"type": "access",
