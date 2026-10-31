@@ -104,6 +104,22 @@ func (h *CategoryHandler) Delete(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (h *CategoryHandler) Restore(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	id, err := parseIDParam(c)
+	if err != nil {
+		return err
+	}
+
+	category, err := h.categoryUsecase.Restore(ctx, id)
+	if err != nil {
+		return dbError(err)
+	}
+
+	return SuccessResponse(c, http.StatusOK, "category restored", category, nil)
+}
+
 // parseIDParam reads the :id path param as int64. Categories use an int64 PK,
 // unlike every other model which uses a UUID.
 func parseIDParam(c echo.Context) (int64, error) {

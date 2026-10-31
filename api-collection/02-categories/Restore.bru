@@ -1,0 +1,21 @@
+meta {
+  name: Restore
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/v1/categories/{{category_id}}/restore
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+tests {
+  test('category restored', () => {
+    expect(res.status).to.equal(200);
+  });
+}

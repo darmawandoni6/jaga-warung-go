@@ -61,3 +61,11 @@ func (uc *CategoryUsecase) Patch(ctx context.Context, id int64, name string) (*d
 func (uc *CategoryUsecase) Delete(ctx context.Context, id int64) error {
 	return uc.repo.Delete(ctx, id)
 }
+
+func (uc *CategoryUsecase) Restore(ctx context.Context, id int64) (*domain.Category, error) {
+	category, err := uc.repo.Restore(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("category restore: %w", err)
+	}
+	return category, nil
+}

@@ -74,6 +74,7 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	categoryGroup.GET("/:id", categoryHandler.Get)
 	categoryGroup.PATCH("/:id", categoryHandler.Patch)
 	categoryGroup.DELETE("/:id", categoryHandler.Delete)
+	categoryGroup.POST("/:id/restore", categoryHandler.Restore)
 
 	// -------------------------------------------------------------
 	// 3. Product Domain Wiring & Routing

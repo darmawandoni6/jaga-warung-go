@@ -1,0 +1,25 @@
+meta {
+  name: Delete
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{base_url}}/api/v1/categories/{{category_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+vars:pre-request {
+  category_id: 136
+}
+
+tests {
+  test('category soft-deleted', () => {
+    expect(res.status).to.equal(204);
+  });
+}

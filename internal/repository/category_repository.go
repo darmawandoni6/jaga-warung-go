@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -90,10 +91,13 @@ func (r *categoryRepo) Update(ctx context.Context, c *domain.Category) error {
 	return nil
 }
 
-// Delete soft-deletes the category. The product FK uses ON DELETE SET NULL
-// on the client side — no RESTRICT cascade here.
+// Delete soft-deletes the category. SoftDelete.DeletedAt is a plain pointer,
+// not gorm.DeletedAt, so GORM Delete would hard-delete the row here.
 func (r *categoryRepo) Delete(ctx context.Context, id int64) error {
-	res := r.db.WithContext(ctx).Delete(&domain.Category{}, id)
+	now := time.Now()
+	res := r.db.WithContext(ctx).Model(&domain.Category{}).
+		Where("id = ? AND deleted_at IS NULL", id).
+		Update("deleted_at", now)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -101,4 +105,22 @@ func (r *categoryRepo) Delete(ctx context.Context, id int64) error {
 		return domain.ErrNotFound
 	}
 	return nil
+}
+
+// Restore undeletes a previously soft-deleted category by clearing deleted_at.
+func (r *categoryRepo) Restore(ctx context.Context, id int64) (*domain.Category, error) {
+	var category domain.Category
+	res := r.db.WithContext(ctx).Unscoped().Model(&domain.Category{}).
+		Where("id = ? AND deleted_at IS NOT NULL", id).
+		Update("deleted_at", nil)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, domain.ErrNotFound
+	}
+	if err := r.db.WithContext(ctx).First(&category, id).Error; err != nil {
+		return nil, err
+	}
+	return &category, nil
 }

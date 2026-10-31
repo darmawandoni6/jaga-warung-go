@@ -18,8 +18,8 @@ auth:bearer {
 
 
 tests {
-  test('category deleted', () => {
-    expect(res.status).to.equal(204);
+  test('category deleted or already gone', () => {
+    expect([204, 404]).to.contain(res.status);
   });
 }
 

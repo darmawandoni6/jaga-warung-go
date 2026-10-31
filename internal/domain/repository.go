@@ -44,6 +44,7 @@ type CategoryRepository interface {
 	Get(ctx context.Context, id int64) (*Category, error)
 	Update(ctx context.Context, c *Category) error
 	Delete(ctx context.Context, id int64) error
+	Restore(ctx context.Context, id int64) (*Category, error)
 }
 
 // TransactionRepository persists sales. Create is the transactional sale: the

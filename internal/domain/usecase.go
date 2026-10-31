@@ -45,6 +45,7 @@ type CategoryUseCase interface {
 	Get(ctx context.Context, id int64) (*Category, error)
 	Patch(ctx context.Context, id int64, name string) (*Category, error)
 	Delete(ctx context.Context, id int64) error
+	Restore(ctx context.Context, id int64) (*Category, error)
 }
 
 type ProductListResult struct {
