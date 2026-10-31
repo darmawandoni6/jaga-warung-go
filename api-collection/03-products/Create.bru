@@ -1,0 +1,46 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+
+post {
+  url: {{base_url}}/api/v1/products
+  body: json
+  auth: bearer
+}
+
+
+headers {
+  Content-Type: application/json
+}
+
+
+body:json {
+  {
+    "barcode": "899{{$randomUUID}}",
+    "name": "Kopi Sachet",
+    "buy_price": 1200,
+    "sell_price": 2000,
+    "stock": 10,
+    "min_stock": 3,
+    "type": "Minuman"
+  }
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('product created', () => {
+    expect(res.status).to.equal(201);
+  });
+  if (res.status === 201) {
+    bru.setVar('product_barcode', res.body.data.barcode);
+  }
+}
+

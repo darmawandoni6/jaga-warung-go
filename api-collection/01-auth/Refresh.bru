@@ -1,0 +1,36 @@
+meta {
+  name: Refresh
+  type: http
+  seq: 2
+}
+
+
+post {
+  url: {{base_url}}/api/v1/auth/refresh
+  body: json
+  auth: none
+}
+
+
+headers {
+  Content-Type: application/json
+}
+
+
+body:json {
+  {
+    "refresh_token": "{{refresh_token}}"
+  }
+}
+
+
+tests {
+  test('refresh succeeds', () => {
+    expect(res.status).to.equal(200);
+  });
+  if (res.status === 200) {
+    bru.setVar('access_token', res.body.data.access_token);
+    bru.setVar('refresh_token', res.body.data.refresh_token);
+  }
+}
+

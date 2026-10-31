@@ -1,0 +1,25 @@
+meta {
+  name: Delete_category
+  type: http
+  seq: 7
+}
+
+
+delete {
+  url: {{base_url}}/api/v1/categories/{{category_id}}
+  body: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('category deleted', () => {
+    expect(res.status).to.equal(204);
+  });
+}
+

@@ -1,0 +1,25 @@
+meta {
+  name: Delete_payment
+  type: http
+  seq: 4
+}
+
+
+delete {
+  url: {{base_url}}/api/v1/debt-payments/{{payment_id}}
+  body: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('payment deleted', () => {
+    expect(res.status).to.equal(204);
+  });
+}
+

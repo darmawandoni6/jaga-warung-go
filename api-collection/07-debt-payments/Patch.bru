@@ -1,0 +1,37 @@
+meta {
+  name: Patch
+  type: http
+  seq: 4
+}
+
+
+patch {
+  url: {{base_url}}/api/v1/debt-payments/{{payment_id}}
+  body: json
+  auth: bearer
+}
+
+
+headers {
+  Content-Type: application/json
+}
+
+
+body:json {
+  {
+    "amount": 25000
+  }
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('returns 200', () => {
+    expect(res.status).to.equal(200);
+  });
+}
+

@@ -1,0 +1,43 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+
+post {
+  url: {{base_url}}/api/v1/debts
+  body: json
+  auth: bearer
+}
+
+
+headers {
+  Content-Type: application/json
+}
+
+
+body:json {
+  {
+    "customer_name": "Budi",
+    "phone": "0811111111",
+    "total_debt": 100000,
+    "note": "beli per pack"
+  }
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('debt created', () => {
+    expect(res.status).to.equal(201);
+  });
+  if (res.status === 201) {
+    bru.setVar('debt_id', res.body.data.id);
+  }
+}
+

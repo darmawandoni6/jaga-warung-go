@@ -1,0 +1,25 @@
+meta {
+  name: Delete_movement
+  type: http
+  seq: 3
+}
+
+
+delete {
+  url: {{base_url}}/api/v1/stock-movements/{{movement_id}}
+  body: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('movement deleted', () => {
+    expect(res.status).to.equal(204);
+  });
+}
+

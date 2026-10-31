@@ -1,0 +1,25 @@
+meta {
+  name: List
+  type: http
+  seq: 2
+}
+
+
+get {
+  url: {{base_url}}/api/v1/stock-movements
+  body: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('returns 200', () => {
+    expect(res.status).to.equal(200);
+  });
+}
+

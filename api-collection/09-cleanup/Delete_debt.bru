@@ -1,0 +1,25 @@
+meta {
+  name: Delete_debt
+  type: http
+  seq: 5
+}
+
+
+delete {
+  url: {{base_url}}/api/v1/debts/{{debt_id}}
+  body: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('debt deleted', () => {
+    expect(res.status).to.equal(204);
+  });
+}
+

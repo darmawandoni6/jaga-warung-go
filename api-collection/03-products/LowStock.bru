@@ -1,0 +1,25 @@
+meta {
+  name: LowStock
+  type: http
+  seq: 3
+}
+
+
+get {
+  url: {{base_url}}/api/v1/products/low-stock
+  body: none
+  auth: bearer
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('returns 200', () => {
+    expect(res.status).to.equal(200);
+  });
+}
+

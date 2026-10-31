@@ -1,0 +1,43 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+
+post {
+  url: {{base_url}}/api/v1/debt-payments
+  body: json
+  auth: bearer
+}
+
+
+headers {
+  Content-Type: application/json
+}
+
+
+body:json {
+  {
+    "debt_id": "{{debt_id}}",
+    "amount": 40000,
+    "note": "cicilan 1",
+    "create_cash_flow": true
+  }
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('payment created', () => {
+    expect(res.status).to.equal(201);
+  });
+  if (res.status === 201) {
+    bru.setVar('payment_id', res.body.data.payment.id);
+  }
+}
+

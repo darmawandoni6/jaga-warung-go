@@ -1,0 +1,44 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+
+post {
+  url: {{base_url}}/api/v1/transaction-items
+  body: json
+  auth: bearer
+}
+
+
+headers {
+  Content-Type: application/json
+}
+
+
+body:json {
+  {
+    "transaction_id": "{{transaction_id}}",
+    "product_barcode": "{{product_barcode}}",
+    "product_name": "Kopi Sachet",
+    "sell_price": 2000,
+    "quantity": 1
+  }
+}
+
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+
+tests {
+  test('item created', () => {
+    expect(res.status).to.equal(201);
+  });
+  if (res.status === 201) {
+    bru.setVar('item_id', res.body.data.id);
+  }
+}
+
