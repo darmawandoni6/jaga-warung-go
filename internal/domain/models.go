@@ -132,6 +132,16 @@ type CashFlow struct {
 	SoftDelete `gorm:"embedded"`
 }
 
+// StockMovementType values. The CHECK constraint in docs/schema.md allows only
+// these four; quantity is always stored positive and the sign comes from the
+// type (see repository.stockSign).
+const (
+	MovementRestock        = "restock"
+	MovementSale           = "sale"
+	MovementAdjustmentLoss = "adjustment_loss"
+	MovementAdjustmentGain = "adjustment_gain"
+)
+
 // StockMovement
 type StockMovement struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`

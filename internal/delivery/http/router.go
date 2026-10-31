@@ -94,4 +94,37 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	productGroup.GET("/:id", productHandler.Get)
 	productGroup.PATCH("/:id", productHandler.Patch)
 	productGroup.DELETE("/:id", productHandler.Delete)
+
+	// -------------------------------------------------------------
+	// 4. Transaction Domain Wiring & Routing
+	// -------------------------------------------------------------
+	transactionRepo := repository.NewTransactionRepo(db)
+	transactionItemRepo := repository.NewTransactionItemRepo(db)
+
+	transactionUsecase := usecase.NewTransactionUsecase(transactionRepo)
+	transactionItemUsecase := usecase.NewTransactionItemUsecase(transactionItemRepo)
+
+	transactionHandler := NewTransactionHandler(transactionUsecase)
+	transactionItemHandler := NewTransactionItemHandler(transactionItemUsecase)
+
+	transactionGroup := v1.Group("/transactions")
+	transactionGroup.Use(requireAuth)
+	transactionGroup.Use(middleware.TimeoutMiddleware(10 * time.Second))
+
+	// POST is the sale flow, not a plain insert (docs/api.md § Business endpoints).
+	transactionGroup.GET("", transactionHandler.List)
+	transactionGroup.POST("", transactionHandler.Create)
+	transactionGroup.GET("/:id", transactionHandler.Get)
+	transactionGroup.PATCH("/:id", transactionHandler.Patch)
+	transactionGroup.DELETE("/:id", transactionHandler.Delete)
+
+	transactionItemGroup := v1.Group("/transaction-items")
+	transactionItemGroup.Use(requireAuth)
+	transactionItemGroup.Use(middleware.TimeoutMiddleware(10 * time.Second))
+
+	transactionItemGroup.GET("", transactionItemHandler.List)
+	transactionItemGroup.POST("", transactionItemHandler.Create)
+	transactionItemGroup.GET("/:id", transactionItemHandler.Get)
+	transactionItemGroup.PATCH("/:id", transactionItemHandler.Patch)
+	transactionItemGroup.DELETE("/:id", transactionItemHandler.Delete)
 }

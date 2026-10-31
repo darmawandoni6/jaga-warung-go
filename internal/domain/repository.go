@@ -45,3 +45,27 @@ type CategoryRepository interface {
 	Update(ctx context.Context, c *Category) error
 	Delete(ctx context.Context, id int64) error
 }
+
+// TransactionRepository persists sales. Create is the transactional sale: the
+// transaction, its items, the derived sale stock_movements and the rebuilt
+// products.stock all land in one DB transaction or none of them do. Update and
+// Delete touch only the header row; item changes go through
+// TransactionItemRepository, which owns the stock side effects.
+type TransactionRepository interface {
+	List(ctx context.Context, page, limit int) ([]*Transaction, int64, error)
+	Get(ctx context.Context, id uuid.UUID) (*Transaction, error)
+	Create(ctx context.Context, t *Transaction, items []*TransactionItem) error
+	Update(ctx context.Context, t *Transaction) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// TransactionItemRepository persists line items and owns the stock side effects
+// of editing them: every write regenerates the product's sale movements and
+// rebuilds products.stock from the movement sum.
+type TransactionItemRepository interface {
+	List(ctx context.Context, page, limit int, transactionID *uuid.UUID) ([]*TransactionItem, int64, error)
+	Get(ctx context.Context, id uuid.UUID) (*TransactionItem, error)
+	Create(ctx context.Context, item *TransactionItem) error
+	Update(ctx context.Context, item *TransactionItem) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}

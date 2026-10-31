@@ -1,6 +1,10 @@
 package domain
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 // AuthUseCase is the port for authentication flows. Delivery/http calls it;
 // the implementation in usecase/auth_usecase.go drives the repository.
@@ -73,4 +77,73 @@ type PatchProductRequest struct {
 	MinStock  *int64
 	Type      *string
 	Image     *string
+}
+
+// TransactionUseCase is the port for /transactions. Create is the sale flow
+// (docs/api.md § Business endpoints), not a plain insert: it validates stock,
+// writes items and movements, and rebuilds products.stock.
+type TransactionUseCase interface {
+	List(ctx context.Context, page, limit int) (*TransactionListResult, error)
+	Create(ctx context.Context, req *CreateTransactionRequest) (*Transaction, error)
+	Get(ctx context.Context, id uuid.UUID) (*Transaction, error)
+	Patch(ctx context.Context, id uuid.UUID, req *PatchTransactionRequest) (*Transaction, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// TransactionItemUseCase is the port for /transaction-items. List filters by
+// transaction_id so a client can load the items of one sale without preload.
+type TransactionItemUseCase interface {
+	List(ctx context.Context, page, limit int, transactionID *uuid.UUID) (*TransactionItemListResult, error)
+	Create(ctx context.Context, req *CreateTransactionItemRequest) (*TransactionItem, error)
+	Get(ctx context.Context, id uuid.UUID) (*TransactionItem, error)
+	Patch(ctx context.Context, id uuid.UUID, req *PatchTransactionItemRequest) (*TransactionItem, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type TransactionListResult struct {
+	Data []*Transaction
+	Meta ProductListMeta
+}
+
+type TransactionItemListResult struct {
+	Data []*TransactionItem
+	Meta ProductListMeta
+}
+
+// CreateTransactionItemRequest is one line of a sale. Subtotal is optional: when
+// nil the usecase computes sell_price * quantity, so a client cannot send a
+// subtotal that disagrees with the line. TransactionID is required by
+// POST /transaction-items and ignored when the item is created as part of a sale
+// (the parent transaction sets it).
+type CreateTransactionItemRequest struct {
+	TransactionID  uuid.UUID
+	ProductBarcode string
+	ProductName    string
+	SellPrice      int64
+	Quantity       int64
+	Subtotal       *int64
+}
+
+type CreateTransactionRequest struct {
+	TotalAmount   int64
+	PaymentAmount int64
+	ChangeAmount  int64
+	Note          *string
+	Items         []CreateTransactionItemRequest
+}
+
+// PatchTransactionRequest is partial: a nil field keeps the stored value. Items
+// are not patchable here — edit them through /transaction-items.
+type PatchTransactionRequest struct {
+	TotalAmount   *int64
+	PaymentAmount *int64
+	ChangeAmount  *int64
+	Note          *string
+}
+
+type PatchTransactionItemRequest struct {
+	ProductName *string
+	SellPrice   *int64
+	Quantity    *int64
+	Subtotal    *int64
 }

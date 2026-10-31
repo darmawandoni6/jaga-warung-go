@@ -18,6 +18,10 @@ var (
 	ErrNotFound   = &DomainError{code: "not_found", http: 404}
 	ErrConflict   = &DomainError{code: "conflict", http: 409}
 	ErrBadRequest = &DomainError{code: "bad_request", http: 400}
+
+	// ErrInsufficientStock is a 409 like ErrConflict but a distinct code so the
+	// delivery layer can say "insufficient stock" instead of "conflict".
+	ErrInsufficientStock = &DomainError{code: "insufficient_stock", http: 409}
 )
 
 // DomainError carries a stable machine-readable code and the HTTP status the
