@@ -147,3 +147,74 @@ type PatchTransactionItemRequest struct {
 	Quantity    *int64
 	Subtotal    *int64
 }
+
+// DebtUseCase is the port for /debts. Status is never taken from the client on
+// create; PATCH may set it explicitly so a debt can be written off as bad_debt.
+type DebtUseCase interface {
+	List(ctx context.Context, page, limit int, status string) (*DebtListResult, error)
+	Create(ctx context.Context, req *CreateDebtRequest) (*Debt, error)
+	Get(ctx context.Context, id uuid.UUID) (*Debt, error)
+	Patch(ctx context.Context, id uuid.UUID, req *PatchDebtRequest) (*Debt, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// DebtPaymentUseCase is the port for /debt-payments. Create is the payment flow,
+// not a plain insert: it updates the parent debt's paid_amount and status and can
+// emit a cash-flow income.
+type DebtPaymentUseCase interface {
+	List(ctx context.Context, page, limit int, debtID *uuid.UUID) (*DebtPaymentListResult, error)
+	Create(ctx context.Context, req *CreateDebtPaymentRequest) (*DebtPaymentResult, error)
+	Get(ctx context.Context, id uuid.UUID) (*DebtPayment, error)
+	Patch(ctx context.Context, id uuid.UUID, req *PatchDebtPaymentRequest) (*DebtPayment, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type DebtListResult struct {
+	Data []*Debt
+	Meta ProductListMeta
+}
+
+type DebtPaymentListResult struct {
+	Data []*DebtPayment
+	Meta ProductListMeta
+}
+
+// DebtPaymentResult is what POST /debt-payments returns: the created payment
+// plus the parent debt after paid_amount and status were re-derived.
+type DebtPaymentResult struct {
+	Payment *DebtPayment
+	Debt    *Debt
+}
+
+// CreateDebtRequest deliberately has no Status field: the server derives it, so
+// a client cannot open a debt already marked paid.
+type CreateDebtRequest struct {
+	CustomerName string
+	Phone        *string
+	TotalDebt    int64
+	PaidAmount   int64
+	Note         *string
+}
+
+// PatchDebtRequest is partial. Status is the one field a client may force, so a
+// debt can be flagged bad_debt.
+type PatchDebtRequest struct {
+	CustomerName *string
+	Phone        *string
+	TotalDebt    *int64
+	PaidAmount   *int64
+	Status       *string
+	Note         *string
+}
+
+type CreateDebtPaymentRequest struct {
+	DebtID         uuid.UUID
+	Amount         int64
+	Note           *string
+	CreateCashFlow bool
+}
+
+type PatchDebtPaymentRequest struct {
+	Amount *int64
+	Note   *string
+}

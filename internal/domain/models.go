@@ -88,6 +88,40 @@ type TransactionItem struct {
 	Product Product `gorm:"foreignKey:ProductBarcode;references:Barcode;constraint:OnDelete:RESTRICT" json:"-"`
 }
 
+// Debt status values, matching the chk_debt_status CHECK constraint.
+const (
+	DebtStatusActive  = "active"
+	DebtStatusPartial = "partial"
+	DebtStatusPaid    = "paid"
+	DebtStatusBadDebt = "bad_debt"
+)
+
+// DeriveDebtStatus is the one place the active/partial/paid transition is
+// decided. docs/schema.md: status is derived by PayDebt, never trusted from the
+// client. bad_debt is not reachable here — it is a manual write-off, so it only
+// arrives through an explicit PATCH.
+func DeriveDebtStatus(totalDebt, paidAmount int64) string {
+	switch {
+	case paidAmount > 0 && paidAmount >= totalDebt:
+		return DebtStatusPaid
+	case paidAmount > 0:
+		return DebtStatusPartial
+	default:
+		return DebtStatusActive
+	}
+}
+
+// ValidDebtStatus reports whether s is one of the four allowed values, so a
+// PATCH cannot write something the CHECK constraint would reject at the DB.
+func ValidDebtStatus(s string) bool {
+	switch s {
+	case DebtStatusActive, DebtStatusPartial, DebtStatusPaid, DebtStatusBadDebt:
+		return true
+	default:
+		return false
+	}
+}
+
 // Debt
 type Debt struct {
 	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`

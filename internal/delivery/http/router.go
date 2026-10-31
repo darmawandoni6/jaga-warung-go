@@ -127,4 +127,37 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	transactionItemGroup.GET("/:id", transactionItemHandler.Get)
 	transactionItemGroup.PATCH("/:id", transactionItemHandler.Patch)
 	transactionItemGroup.DELETE("/:id", transactionItemHandler.Delete)
+
+	// -------------------------------------------------------------
+	// 5. Debt Domain Wiring & Routing
+	// -------------------------------------------------------------
+	debtRepo := repository.NewDebtRepository(db)
+	debtPaymentRepo := repository.NewDebtPaymentRepository(db)
+
+	debtUsecase := usecase.NewDebtUsecase(debtRepo)
+	debtPaymentUsecase := usecase.NewDebtPaymentUsecase(debtPaymentRepo)
+
+	debtHandler := NewDebtHandler(debtUsecase)
+	debtPaymentHandler := NewDebtPaymentHandler(debtPaymentUsecase)
+
+	debtGroup := v1.Group("/debts")
+	debtGroup.Use(requireAuth)
+	debtGroup.Use(middleware.TimeoutMiddleware(10 * time.Second))
+
+	debtGroup.GET("", debtHandler.List)
+	debtGroup.POST("", debtHandler.Create)
+	debtGroup.GET("/:id", debtHandler.Get)
+	debtGroup.PATCH("/:id", debtHandler.Patch)
+	debtGroup.DELETE("/:id", debtHandler.Delete)
+
+	debtPaymentGroup := v1.Group("/debt-payments")
+	debtPaymentGroup.Use(requireAuth)
+	debtPaymentGroup.Use(middleware.TimeoutMiddleware(10 * time.Second))
+
+	// POST is the payment flow, not a plain insert (docs/api.md § Business endpoints).
+	debtPaymentGroup.GET("", debtPaymentHandler.List)
+	debtPaymentGroup.POST("", debtPaymentHandler.Create)
+	debtPaymentGroup.GET("/:id", debtPaymentHandler.Get)
+	debtPaymentGroup.PATCH("/:id", debtPaymentHandler.Patch)
+	debtPaymentGroup.DELETE("/:id", debtPaymentHandler.Delete)
 }

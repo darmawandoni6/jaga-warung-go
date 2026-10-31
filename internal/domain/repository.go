@@ -69,3 +69,25 @@ type TransactionItemRepository interface {
 	Update(ctx context.Context, item *TransactionItem) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
+
+// DebtRepository persists debts. Create ignores any client status and derives it
+// from the amounts, so a client cannot open a debt as "paid".
+type DebtRepository interface {
+	List(ctx context.Context, page, limit int, status string) ([]*Debt, int64, error)
+	Get(ctx context.Context, id uuid.UUID) (*Debt, error)
+	Create(ctx context.Context, d *Debt) error
+	Update(ctx context.Context, d *Debt) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// DebtPaymentRepository persists payments. Create is the business flow from
+// docs/api.md § Business endpoints: it inserts the payment, adds to the debt's
+// paid_amount, re-derives status, and optionally records a cash-flow income —
+// all in one DB transaction.
+type DebtPaymentRepository interface {
+	List(ctx context.Context, page, limit int, debtID *uuid.UUID) ([]*DebtPayment, int64, error)
+	Get(ctx context.Context, id uuid.UUID) (*DebtPayment, error)
+	Create(ctx context.Context, p *DebtPayment, createCashFlow bool) (*Debt, error)
+	Update(ctx context.Context, p *DebtPayment) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
