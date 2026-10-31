@@ -91,3 +91,15 @@ type DebtPaymentRepository interface {
 	Update(ctx context.Context, p *DebtPayment) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
+
+// StockMovementRepository persists stock movements and owns the stock side
+// effect: every write re-derives products.stock from the movement sum, so the
+// cache always equals Σ non-deleted movements. Create is the business POST — it
+// locks the product, appends the movement and rebuilds the cache, atomically.
+type StockMovementRepository interface {
+	List(ctx context.Context, page, limit int, productBarcode string) ([]*StockMovement, int64, error)
+	Get(ctx context.Context, id uuid.UUID) (*StockMovement, error)
+	Create(ctx context.Context, m *StockMovement) error
+	Update(ctx context.Context, m *StockMovement) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}

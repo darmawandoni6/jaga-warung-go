@@ -160,4 +160,23 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	debtPaymentGroup.GET("/:id", debtPaymentHandler.Get)
 	debtPaymentGroup.PATCH("/:id", debtPaymentHandler.Patch)
 	debtPaymentGroup.DELETE("/:id", debtPaymentHandler.Delete)
+
+	// -------------------------------------------------------------
+	// 6. Stock Movement Domain Wiring & Routing
+	// -------------------------------------------------------------
+	stockMovementRepo := repository.NewStockMovementRepo(db)
+	stockMovementUsecase := usecase.NewStockMovementUsecase(stockMovementRepo)
+	stockMovementHandler := NewStockMovementHandler(stockMovementUsecase)
+
+	stockMovementGroup := v1.Group("/stock-movements")
+	stockMovementGroup.Use(requireAuth)
+	stockMovementGroup.Use(middleware.TimeoutMiddleware(10 * time.Second))
+
+	// POST applies the delta and appends the movement atomically
+	// (docs/api.md § Business endpoints).
+	stockMovementGroup.GET("", stockMovementHandler.List)
+	stockMovementGroup.POST("", stockMovementHandler.Create)
+	stockMovementGroup.GET("/:id", stockMovementHandler.Get)
+	stockMovementGroup.PATCH("/:id", stockMovementHandler.Patch)
+	stockMovementGroup.DELETE("/:id", stockMovementHandler.Delete)
 }

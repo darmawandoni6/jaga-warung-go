@@ -218,3 +218,41 @@ type PatchDebtPaymentRequest struct {
 	Amount *int64
 	Note   *string
 }
+
+// StockMovementUseCase is the port for /stock-movements. Create is the business
+// flow from docs/api.md § Business endpoints: it validates the movement type and
+// the repository applies the delta and appends the movement atomically,
+// recomputing products.stock from the movement sum.
+type StockMovementUseCase interface {
+	List(ctx context.Context, page, limit int, productBarcode string) (*StockMovementListResult, error)
+	Create(ctx context.Context, req *CreateStockMovementRequest) (*StockMovement, error)
+	Get(ctx context.Context, id uuid.UUID) (*StockMovement, error)
+	Patch(ctx context.Context, id uuid.UUID, req *PatchStockMovementRequest) (*StockMovement, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type StockMovementListResult struct {
+	Data []*StockMovement
+	Meta ProductListMeta
+}
+
+// CreateStockMovementRequest is one applied delta. Quantity is always positive;
+// the direction comes from the type. TotalCost is the valuation of a restock
+// (buy_price × quantity) and defaults to 0.
+type CreateStockMovementRequest struct {
+	ProductBarcode string
+	Type           string
+	Quantity       int64
+	TotalCost      int64
+	Note           *string
+}
+
+// PatchStockMovementRequest is partial. ProductBarcode is deliberately not
+// patchable: a movement is the record of stock that happened to one product, so
+// moving it between products is excluded from the generic PATCH.
+type PatchStockMovementRequest struct {
+	Type      *string
+	Quantity  *int64
+	TotalCost *int64
+	Note      *string
+}

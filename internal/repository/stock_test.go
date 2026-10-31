@@ -51,3 +51,22 @@ func TestMovementTypesMatchSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestValidMovementType(t *testing.T) {
+	for _, mt := range []string{
+		domain.MovementRestock,
+		domain.MovementSale,
+		domain.MovementAdjustmentLoss,
+		domain.MovementAdjustmentGain,
+	} {
+		if !domain.ValidMovementType(mt) {
+			t.Fatalf("%q should be valid", mt)
+		}
+	}
+
+	for _, s := range []string{"", "Restock", "SALE", "magic", "adjustment"} {
+		if domain.ValidMovementType(s) {
+			t.Fatalf("%q should be rejected", s)
+		}
+	}
+}

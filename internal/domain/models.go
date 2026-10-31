@@ -176,6 +176,18 @@ const (
 	MovementAdjustmentGain = "adjustment_gain"
 )
 
+// ValidMovementType reports whether s is one of the four allowed types, so a
+// POST/PATCH cannot write something the chk_stock_movements_type CHECK
+// constraint would reject at the DB.
+func ValidMovementType(s string) bool {
+	switch s {
+	case MovementRestock, MovementSale, MovementAdjustmentLoss, MovementAdjustmentGain:
+		return true
+	default:
+		return false
+	}
+}
+
 // StockMovement
 type StockMovement struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`

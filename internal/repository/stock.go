@@ -137,3 +137,16 @@ func rebuildStock(tx *gorm.DB, barcode string) error {
 	}
 	return writeStockCache(tx, barcode, stock)
 }
+
+// writeStockCacheWithCheck recomputes the cached stock from the movement log and
+// rejects a negative result, so no write path can drive stock below zero.
+func writeStockCacheWithCheck(tx *gorm.DB, barcode string) error {
+	stock, err := sumMovements(tx, barcode)
+	if err != nil {
+		return err
+	}
+	if stock < 0 {
+		return domain.ErrInsufficientStock
+	}
+	return writeStockCache(tx, barcode, stock)
+}
