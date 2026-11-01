@@ -4,34 +4,36 @@ meta {
   seq: 5
 }
 
-
 patch {
   url: {{base_url}}/api/v1/products/{{product_barcode}}
   body: json
   auth: bearer
 }
 
-
 headers {
   Content-Type: application/json
 }
-
-
-body:json {
-  {
-    "name": "Kopi Sachet Premium"
-  }
-}
-
 
 auth:bearer {
   token: {{access_token}}
 }
 
+body:json {
+  {
+    "buy_price": 3000,
+    "sell_price": 5000,
+    "stock": 20,
+    "min_stock": 5,
+    "category_id": 1
+  }
+}
+
+vars:pre-request {
+  product_barcode: 8990000000011
+}
 
 tests {
   test('returns 200', () => {
     expect(res.status).to.equal(200);
   });
 }
-

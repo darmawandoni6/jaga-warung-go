@@ -1,0 +1,25 @@
+meta {
+  name: Delete
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{base_url}}/api/v1/products/{{product_barcode}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+vars:pre-request {
+  product_barcode: 899bd749318-ed1d-4acb-9ed5-93e3809119d2
+}
+
+tests {
+  test('soft deleted (inactive)', () => {
+    expect(res.status).to.equal(204);
+  });
+}

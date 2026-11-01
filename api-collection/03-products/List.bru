@@ -4,22 +4,23 @@ meta {
   seq: 2
 }
 
-
 get {
-  url: {{base_url}}/api/v1/products
+  url: {{base_url}}/api/v1/products?include_inactive=true
   body: none
   auth: bearer
 }
 
+params:query {
+  include_inactive: true
+  ~category_id: {{category_id}}
+}
 
 auth:bearer {
   token: {{access_token}}
 }
-
 
 tests {
   test('returns 200', () => {
     expect(res.status).to.equal(200);
   });
 }
-

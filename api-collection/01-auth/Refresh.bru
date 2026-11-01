@@ -4,18 +4,15 @@ meta {
   seq: 2
 }
 
-
 post {
   url: {{base_url}}/api/v1/auth/refresh
   body: json
   auth: none
 }
 
-
 headers {
   Content-Type: application/json
 }
-
 
 body:json {
   {
@@ -23,6 +20,28 @@ body:json {
   }
 }
 
+script:post-response {
+  // Ambil body response sebagai JSON
+  const body = res.getBody();
+  
+  // Validasi response sukses
+  if (res.getStatus() === 200 && body.data) {
+    const { access_token, refresh_token, expires_in } = body.data;
+  
+    // Simpan ke environment variable (bisa diakses via {{access_token}} dll)
+    bru.setEnvVar("access_token", access_token);
+    bru.setEnvVar("refresh_token", refresh_token);
+    bru.setEnvVar("expires_in", expires_in);
+  
+    // Opsional: simpan juga waktu expired (epoch detik)
+    const expiredAt = Math.floor(Date.now() / 1000) + expires_in;
+    bru.setEnvVar("access_token_expired_at", expiredAt);
+  
+    console.log("✅ Token tersimpan. Expired at:", new Date(expiredAt * 1000));
+  } else {
+    console.warn("⚠️ Login gagal atau format response tidak sesuai:", body);
+  }
+}
 
 tests {
   test('refresh succeeds', () => {
@@ -33,4 +52,3 @@ tests {
     bru.setVar('refresh_token', res.body.data.refresh_token);
   }
 }
-

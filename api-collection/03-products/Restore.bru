@@ -1,0 +1,28 @@
+meta {
+  name: Restore
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/v1/products/{{product_barcode}}/restore
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+vars:pre-request {
+  product_barcode: 899bd749318-ed1d-4acb-9ed5-93e3809119d2
+}
+
+tests {
+  test('restored', () => {
+    expect(res.status).to.equal(200);
+  });
+  test('active again', () => {
+    expect(res.body.data.deleted_at).to.equal(null);
+  });
+}

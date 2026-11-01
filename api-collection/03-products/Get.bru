@@ -4,22 +4,22 @@ meta {
   seq: 4
 }
 
-
 get {
   url: {{base_url}}/api/v1/products/{{product_barcode}}
   body: none
   auth: bearer
 }
 
-
 auth:bearer {
   token: {{access_token}}
 }
 
+vars:pre-request {
+  product_barcode: 8990000000011
+}
 
 tests {
   test('returns 200', () => {
     expect(res.status).to.equal(200);
   });
 }
-

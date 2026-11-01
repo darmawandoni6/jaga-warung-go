@@ -4,18 +4,19 @@ meta {
   seq: 1
 }
 
-
 post {
   url: {{base_url}}/api/v1/products
   body: json
   auth: bearer
 }
 
-
 headers {
   Content-Type: application/json
 }
 
+auth:bearer {
+  token: {{access_token}}
+}
 
 body:json {
   {
@@ -25,22 +26,22 @@ body:json {
     "sell_price": 2000,
     "stock": 10,
     "min_stock": 3,
-    "type": "Minuman"
+    "category_id": {{category_id}}
   }
 }
 
-
-auth:bearer {
-  token: {{access_token}}
+vars:pre-request {
+  category_id: 1
 }
-
 
 tests {
   test('product created', () => {
     expect(res.status).to.equal(201);
   });
+  test('carries category', () => {
+    expect(res.body.data.category_id).to.be.a('number');
+  });
   if (res.status === 201) {
     bru.setVar('product_barcode', res.body.data.barcode);
   }
 }
-
