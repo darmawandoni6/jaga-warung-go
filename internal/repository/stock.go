@@ -65,11 +65,13 @@ func writeStockCache(tx *gorm.DB, barcode string, stock int64) error {
 }
 
 // lockProduct loads a product FOR UPDATE so concurrent sales cannot both pass
-// the stock check and oversell. Returns ErrNotFound when the barcode is unknown.
+// the stock check and oversell. Returns ErrNotFound when the barcode is unknown
+// or the product is inactive (soft-deleted) — an inactive product cannot be
+// sold, restocked or adjusted.
 func lockProduct(tx *gorm.DB, barcode string) (*domain.Product, error) {
 	var p domain.Product
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("barcode = ?", barcode).
+		Where("barcode = ? AND deleted_at IS NULL", barcode).
 		First(&p).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

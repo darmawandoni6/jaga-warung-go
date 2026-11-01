@@ -80,7 +80,7 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	// 3. Product Domain Wiring & Routing
 	// -------------------------------------------------------------
 	productRepo := repository.NewProductRepo(db)
-	productUsecase := usecase.NewProductUsecase(productRepo)
+	productUsecase := usecase.NewProductUsecase(productRepo, categoryRepo)
 	productHandler := NewProductHandler(productUsecase)
 
 	productGroup := v1.Group("/products")
@@ -95,6 +95,8 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	productGroup.GET("/:id", productHandler.Get)
 	productGroup.PATCH("/:id", productHandler.Patch)
 	productGroup.DELETE("/:id", productHandler.Delete)
+	// DELETE /products/:id is a soft delete (inactive); this undoes it.
+	productGroup.POST("/:id/restore", productHandler.Restore)
 
 	// -------------------------------------------------------------
 	// 4. Transaction Domain Wiring & Routing

@@ -35,8 +35,11 @@ type Product struct {
 	SellPrice int64   `gorm:"not null;default:0" json:"sell_price"`
 	Stock     int64   `gorm:"not null;default:0" json:"stock"`
 	MinStock  int64   `gorm:"not null;default:0" json:"min_stock"`
-	Type      *string `json:"type"`
 	Image     *string `json:"image"`
+
+	// 1 category → many products: the FK lives on products. NULL = uncategorized
+	// (existing rows keep working), so the column is a pointer.
+	CategoryID *int64 `gorm:"index" json:"category_id"`
 
 	CreatedAt time.Time `gorm:"type:timestamptz" json:"created_at"`
 	UpdatedAt time.Time `gorm:"type:timestamptz" json:"updated_at"`
@@ -44,6 +47,7 @@ type Product struct {
 	SoftDelete `gorm:"embedded"`
 
 	Movements []StockMovement `gorm:"foreignKey:ProductBarcode;references:Barcode;constraint:OnDelete:RESTRICT" json:"-"`
+	Category  *Category       `gorm:"foreignKey:CategoryID;references:ID;constraint:OnDelete:RESTRICT" json:"category,omitempty"`
 }
 
 // Category

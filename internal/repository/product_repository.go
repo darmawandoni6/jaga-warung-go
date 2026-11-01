@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -24,11 +25,19 @@ func NewProductRepo(db *gorm.DB) domain.ProductRepository {
 	return &productRepo{db: db}
 }
 
-func (r *productRepo) List(ctx context.Context, page, limit int, search string) ([]*domain.Product, int64, error) {
-	q := r.db.Model(&domain.Product{})
+func (r *productRepo) List(ctx context.Context, page, limit int, search string, categoryID *int64, includeInactive bool) ([]*domain.Product, int64, error) {
+	q := r.db.Model(&domain.Product{}).Preload("Category", preloadLiveCategory)
+	if !includeInactive {
+		// Soft-deleted rows are inactive; DeletedAt is a plain pointer so GORM
+		// filters nothing for us.
+		q = q.Where("deleted_at IS NULL")
+	}
 	if search != "" {
 		search = "%" + search + "%"
 		q = q.Where("name LIKE ? OR barcode LIKE ?", search, search)
+	}
+	if categoryID != nil {
+		q = q.Where("category_id = ?", *categoryID)
 	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
@@ -44,7 +53,8 @@ func (r *productRepo) List(ctx context.Context, page, limit int, search string) 
 
 func (r *productRepo) Get(ctx context.Context, barcode string) (*domain.Product, error) {
 	var p domain.Product
-	err := r.db.Where("barcode = ?", barcode).First(&p).Error
+	err := r.db.Preload("Category", preloadLiveCategory).
+		Where("barcode = ? AND deleted_at IS NULL", barcode).First(&p).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrNotFound
@@ -96,6 +106,13 @@ func (r *productRepo) Create(ctx context.Context, p *domain.Product) error {
 // strPtr is a tiny helper for the optional note fields the repositories write.
 func strPtr(s string) *string { return &s }
 
+// preloadLiveCategory hides soft-deleted categories from product responses
+// (plan § E): GORM's Preload adds no deleted_at filter for the custom
+// SoftDelete type.
+func preloadLiveCategory(db *gorm.DB) *gorm.DB {
+	return db.Where("deleted_at IS NULL")
+}
+
 func (r *productRepo) Update(ctx context.Context, p *domain.Product) error {
 	// Immutable columns: barcode is PK, created_at is audit.
 	savedBarcode, savedCreatedAt := p.Barcode, p.CreatedAt
@@ -133,9 +150,10 @@ func (r *productRepo) Update(ctx context.Context, p *domain.Product) error {
 		}
 
 		// Stock is written below only as the cache value; rebuildStock overwrites
-		// it with the authoritative sum.
-		upd := tx.Model(p).
-			Select("Name", "BuyPrice", "SellPrice", "Stock", "MinStock", "Type", "Image", "UpdatedAt").
+		// it with the authoritative sum. Omit(clause.Associations) keeps the
+		// preloaded Category from being written back as its own row.
+		upd := tx.Omit(clause.Associations).Model(p).
+			Select("Name", "BuyPrice", "SellPrice", "Stock", "MinStock", "Image", "CategoryID", "UpdatedAt").
 			Save(p)
 		if upd.Error != nil {
 			return upd.Error
@@ -155,8 +173,13 @@ func (r *productRepo) Update(ctx context.Context, p *domain.Product) error {
 	})
 }
 
+// Delete deactivates the product (soft delete): the row stays so movements and
+// transaction_items keep their FK target, but List/Get/sale flows ignore it.
+// Undo with Restore.
 func (r *productRepo) Delete(ctx context.Context, barcode string) error {
-	res := r.db.Where("barcode = ?", barcode).Delete(&domain.Product{})
+	res := r.db.WithContext(ctx).Model(&domain.Product{}).
+		Where("barcode = ? AND deleted_at IS NULL", barcode).
+		Update("deleted_at", time.Now())
 	if res.Error != nil {
 		return res.Error
 	}
@@ -164,6 +187,20 @@ func (r *productRepo) Delete(ctx context.Context, barcode string) error {
 		return domain.ErrNotFound
 	}
 	return nil
+}
+
+// Restore reactivates a soft-deleted product and returns it with its category.
+func (r *productRepo) Restore(ctx context.Context, barcode string) (*domain.Product, error) {
+	res := r.db.WithContext(ctx).Model(&domain.Product{}).
+		Where("barcode = ? AND deleted_at IS NOT NULL", barcode).
+		Update("deleted_at", nil)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return nil, domain.ErrNotFound
+	}
+	return r.Get(ctx, barcode)
 }
 
 func (r *productRepo) CountBelow(ctx context.Context, minStock int64) ([]*domain.Product, int64, error) {
@@ -177,6 +214,6 @@ func (r *productRepo) CountBelow(ctx context.Context, minStock int64) ([]*domain
 
 func (r *productRepo) All(ctx context.Context) []*domain.Product {
 	var list []*domain.Product
-	r.db.Find(&list)
+	r.db.Where("deleted_at IS NULL").Find(&list)
 	return list
 }

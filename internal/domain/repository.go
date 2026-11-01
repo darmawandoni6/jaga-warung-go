@@ -26,11 +26,14 @@ type RefreshTokenRepository interface {
 // ProductRepository is the read/write port for /products. The handler only talks
 // through this port; the repository implements it against GORM/Postgres.
 type ProductRepository interface {
-	List(ctx context.Context, page, limit int, search string) ([]*Product, int64, error)
+	// categoryID filters by category when non-nil (GET /products?category_id=).
+	// includeInactive=true also returns soft-deleted rows.
+	List(ctx context.Context, page, limit int, search string, categoryID *int64, includeInactive bool) ([]*Product, int64, error)
 	Get(ctx context.Context, barcode string) (*Product, error)
 	Create(ctx context.Context, p *Product) error
 	Update(ctx context.Context, p *Product) error
 	Delete(ctx context.Context, barcode string) error
+	Restore(ctx context.Context, barcode string) (*Product, error)
 	CountBelow(ctx context.Context, minStock int64) ([]*Product, int64, error)
 	All(ctx context.Context) []*Product // for migration seed, not a business query
 }

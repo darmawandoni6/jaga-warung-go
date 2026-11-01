@@ -29,11 +29,12 @@ type AuthTokens struct {
 // the repository through this port; product_usecase.go implements it
 // after validation.
 type ProductUseCase interface {
-	List(ctx context.Context, page, limit int, search string) (*ProductListResult, error)
+	List(ctx context.Context, page, limit int, search string, categoryID *int64, includeInactive bool) (*ProductListResult, error)
 	Create(ctx context.Context, req *CreateProductRequest) (*Product, error)
 	Get(ctx context.Context, barcode string) (*Product, error)
 	Patch(ctx context.Context, barcode string, req *PatchProductRequest) (*Product, error)
 	Delete(ctx context.Context, barcode string) error
+	Restore(ctx context.Context, barcode string) (*Product, error)
 	LowStock(ctx context.Context) ([]*Product, int64, error)
 }
 
@@ -60,24 +61,24 @@ type ProductListMeta struct {
 }
 
 type CreateProductRequest struct {
-	Barcode   string
-	Name      string
-	BuyPrice  int64
-	SellPrice int64
-	Stock     int64
-	MinStock  int64
-	Type      *string
-	Image     *string
+	Barcode    string
+	Name       string
+	BuyPrice   int64
+	SellPrice  int64
+	Stock      int64
+	MinStock   int64
+	Image      *string
+	CategoryID *int64
 }
 
 type PatchProductRequest struct {
-	Name      *string
-	BuyPrice  *int64
-	SellPrice *int64
-	Stock     *int64
-	MinStock  *int64
-	Type      *string
-	Image     *string
+	Name       *string
+	BuyPrice   *int64
+	SellPrice  *int64
+	Stock      *int64
+	MinStock   *int64
+	Image      *string
+	CategoryID *int64
 }
 
 // TransactionUseCase is the port for /transactions. Create is the sale flow
