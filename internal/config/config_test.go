@@ -52,6 +52,35 @@ func TestLoadConfigRejectsMalformedTTL(t *testing.T) {
 	}
 }
 
+func TestLoadConfigParsesKafkaBrokers(t *testing.T) {
+	t.Setenv("KAFKA_BROKERS", " a:9092 , b:9094 ,, ")
+
+	cfg := LoadConfig()
+
+	if len(cfg.KafkaBrokers) != 2 {
+		t.Fatalf("KafkaBrokers = %v, want 2 entries", cfg.KafkaBrokers)
+	}
+	if cfg.KafkaBrokers[0] != "a:9092" || cfg.KafkaBrokers[1] != "b:9094" {
+		t.Fatalf("KafkaBrokers = %v, want [a:9092 b:9094]", cfg.KafkaBrokers)
+	}
+}
+
+func TestLoadConfigKafkaBrokersEmptyMeansDisabled(t *testing.T) {
+	t.Setenv("KAFKA_BROKERS", "")
+
+	if brokers := LoadConfig().KafkaBrokers; len(brokers) != 0 {
+		t.Fatalf("KafkaBrokers = %v, want empty (publisher disabled)", brokers)
+	}
+}
+
+func TestLoadConfigKafkaGroupIDDefault(t *testing.T) {
+	t.Setenv("KAFKA_GROUP_ID", "")
+
+	if got := LoadConfig().KafkaGroupID; got != "jaga-warung-worker" {
+		t.Fatalf("KafkaGroupID = %q, want default jaga-warung-worker", got)
+	}
+}
+
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		name    string

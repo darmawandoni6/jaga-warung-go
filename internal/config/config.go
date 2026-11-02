@@ -20,6 +20,8 @@ type Config struct {
 	RefreshTTL    time.Duration
 	AdminPhone    string
 	AdminPassword string
+	KafkaBrokers  []string
+	KafkaGroupID  string
 	isDebug       bool
 }
 
@@ -36,6 +38,8 @@ func LoadConfig() *Config {
 		RefreshTTL:    getDuration("REFRESH_TTL", 720*time.Hour),
 		AdminPhone:    getEnv("ADMIN_PHONE", ""),
 		AdminPassword: getEnv("ADMIN_PASSWORD", ""),
+		KafkaBrokers:  splitCSV(getEnv("KAFKA_BROKERS", "")),
+		KafkaGroupID:  getEnv("KAFKA_GROUP_ID", "jaga-warung-worker"),
 		isDebug:       getEnv("DEBUG", "false") == "true",
 	}
 }
@@ -81,6 +85,18 @@ func getDuration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+// splitCSV parses a comma-separated env var, dropping blank entries so
+// `KAFKA_BROKERS=` still means "publisher disabled".
+func splitCSV(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // Helper function untuk membaca env dengan nilai default. An env var set to the

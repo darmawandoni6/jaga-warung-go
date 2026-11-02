@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"jaga-warung-go/internal/domain"
+	"jaga-warung-go/pkg/kafka"
 )
 
 // StockMovementUsecase implements domain.StockMovementUseCase. Create is the
@@ -16,10 +17,11 @@ import (
 // This layer validates the movement type and quantity shape.
 type StockMovementUsecase struct {
 	repo domain.StockMovementRepository
+	pub  *kafka.Producer
 }
 
-func NewStockMovementUsecase(repo domain.StockMovementRepository) domain.StockMovementUseCase {
-	return &StockMovementUsecase{repo: repo}
+func NewStockMovementUsecase(repo domain.StockMovementRepository, pub *kafka.Producer) domain.StockMovementUseCase {
+	return &StockMovementUsecase{repo: repo, pub: pub}
 }
 
 func (uc *StockMovementUsecase) List(ctx context.Context, page, limit int, productBarcode string) (*domain.StockMovementListResult, error) {
@@ -59,6 +61,8 @@ func (uc *StockMovementUsecase) Create(ctx context.Context, req *domain.CreateSt
 	if err := uc.repo.Create(ctx, m); err != nil {
 		return nil, err
 	}
+	uc.pub.Publish(ctx, kafka.TopicEvents, m.ID.String(),
+		domain.NewEvent("stock.movement.created", "stock.movement", m.ID.String(), domain.NewStockMovementEvent(m)))
 	return m, nil
 }
 
@@ -107,9 +111,17 @@ func (uc *StockMovementUsecase) Patch(ctx context.Context, id uuid.UUID, req *do
 	if err := uc.repo.Update(ctx, cur); err != nil {
 		return nil, err
 	}
+	uc.pub.Publish(ctx, kafka.TopicEvents, cur.ID.String(),
+		domain.NewEvent("stock.movement.updated", "stock.movement", cur.ID.String(), domain.NewStockMovementEvent(cur)))
 	return cur, nil
 }
 
 func (uc *StockMovementUsecase) Delete(ctx context.Context, id uuid.UUID) error {
-	return uc.repo.Delete(ctx, id)
+	if err := uc.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	// Id-only: the row is gone, and Delete returns no data.
+	uc.pub.Publish(ctx, kafka.TopicEvents, id.String(),
+		domain.NewEvent("stock.movement.deleted", "stock.movement", id.String(), nil))
+	return nil
 }

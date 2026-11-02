@@ -54,7 +54,7 @@ func int64Ptr(v int64) *int64 { return &v }
 
 func TestTransactionCreate_RejectsEmptyItems(t *testing.T) {
 	repo := &fakeTransactionRepo{}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
 		TotalAmount: 1000, PaymentAmount: 1000,
@@ -70,7 +70,7 @@ func TestTransactionCreate_RejectsEmptyItems(t *testing.T) {
 
 func TestTransactionCreate_RejectsUnderpayment(t *testing.T) {
 	repo := &fakeTransactionRepo{}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
 		TotalAmount:   5000,
@@ -87,7 +87,7 @@ func TestTransactionCreate_RejectsUnderpayment(t *testing.T) {
 
 func TestTransactionCreate_RejectsNonPositiveQuantity(t *testing.T) {
 	repo := &fakeTransactionRepo{}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
 		TotalAmount: 0, PaymentAmount: 0,
@@ -105,7 +105,7 @@ func TestTransactionCreate_RejectsNonPositiveQuantity(t *testing.T) {
 // cannot persist a subtotal that disagrees with the line.
 func TestTransactionCreate_DerivesSubtotal(t *testing.T) {
 	repo := &fakeTransactionRepo{}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
 		TotalAmount: 4000, PaymentAmount: 5000, ChangeAmount: 1000,
@@ -128,7 +128,7 @@ func TestTransactionCreate_DerivesSubtotal(t *testing.T) {
 // An explicit subtotal cannot override price × quantity.
 func TestTransactionCreate_DerivesSubtotalWhenExplicitSubtotalProvided(t *testing.T) {
 	repo := &fakeTransactionRepo{}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
 		TotalAmount: 4000, PaymentAmount: 4000,
@@ -148,7 +148,7 @@ func TestTransactionCreate_DerivesSubtotalWhenExplicitSubtotalProvided(t *testin
 // Insufficient stock comes from the repository; the usecase must not swallow it.
 func TestTransactionCreate_PropagatesInsufficientStock(t *testing.T) {
 	repo := &fakeTransactionRepo{createErr: domain.ErrInsufficientStock}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
 		TotalAmount: 1000, PaymentAmount: 1000,
@@ -170,7 +170,7 @@ func TestTransactionPatch_AppliesOnlyPresentFields(t *testing.T) {
 		ChangeAmount:  1000,
 	}
 	repo := &fakeTransactionRepo{getResult: existing}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	got, err := uc.Patch(context.Background(), existing.ID, &domain.PatchTransactionRequest{
 		TotalAmount: int64Ptr(5000),
@@ -190,7 +190,7 @@ func TestTransactionPatch_AppliesOnlyPresentFields(t *testing.T) {
 
 func TestTransactionPatch_MissingRowIsNotFound(t *testing.T) {
 	repo := &fakeTransactionRepo{getErr: domain.ErrNotFound}
-	uc := NewTransactionUsecase(repo)
+	uc := NewTransactionUsecase(repo, nil)
 
 	_, err := uc.Patch(context.Background(), uuid.New(), &domain.PatchTransactionRequest{})
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -212,7 +212,7 @@ func TestTransactionList_ClampsPagination(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			uc := NewTransactionUsecase(&fakeTransactionRepo{})
+			uc := NewTransactionUsecase(&fakeTransactionRepo{}, nil)
 			res, err := uc.List(context.Background(), tc.page, tc.limit)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

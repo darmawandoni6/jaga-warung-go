@@ -6,6 +6,7 @@ import (
 	"jaga-warung-go/internal/config"
 	httpDelivery "jaga-warung-go/internal/delivery/http"
 	"jaga-warung-go/internal/repository"
+	"jaga-warung-go/pkg/kafka"
 	"jaga-warung-go/pkg/logger"
 
 	"log"
@@ -35,6 +36,11 @@ func main() {
 		log.Fatalf("Gagal inisialisasi database: %v", err)
 	}
 
+	// Kafka publisher: disabled (no-op) when KAFKA_BROKERS is empty. Publish
+	// failures are logged, never fatal — the DB write already committed.
+	pub := kafka.NewProducer(cfg.KafkaBrokers)
+	defer pub.Close()
+
 	// Sync Database Schema
 	if err := repository.SyncDatabase(db); err != nil {
 		log.Fatalf("Gagal sync database: %v", err)
@@ -61,7 +67,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Register Router & Pass DB ke SetupRouter
-	httpDelivery.SetupRouter(e, db, cfg)
+	httpDelivery.SetupRouter(e, db, cfg, pub)
 
 	// Setup net/http Server
 	server := &http.Server{

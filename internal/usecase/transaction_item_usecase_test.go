@@ -49,7 +49,7 @@ func (f *fakeItemRepo) Delete(ctx context.Context, id uuid.UUID) error {
 
 func TestTransactionItemCreate_RejectsMissingBarcode(t *testing.T) {
 	repo := &fakeItemRepo{}
-	uc := NewTransactionItemUsecase(repo)
+	uc := NewTransactionItemUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionItemRequest{
 		TransactionID: uuid.New(), Quantity: 1,
@@ -64,7 +64,7 @@ func TestTransactionItemCreate_RejectsMissingBarcode(t *testing.T) {
 
 func TestTransactionItemCreate_RejectsNonPositiveQuantity(t *testing.T) {
 	repo := &fakeItemRepo{}
-	uc := NewTransactionItemUsecase(repo)
+	uc := NewTransactionItemUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionItemRequest{
 		TransactionID: uuid.New(), ProductBarcode: "899", Quantity: -2,
@@ -76,7 +76,7 @@ func TestTransactionItemCreate_RejectsNonPositiveQuantity(t *testing.T) {
 
 func TestTransactionItemCreate_DerivesSubtotal(t *testing.T) {
 	repo := &fakeItemRepo{}
-	uc := NewTransactionItemUsecase(repo)
+	uc := NewTransactionItemUsecase(repo, nil)
 	txID := uuid.New()
 
 	item, err := uc.Create(context.Background(), &domain.CreateTransactionItemRequest{
@@ -100,7 +100,7 @@ func TestTransactionItemCreate_DerivesSubtotal(t *testing.T) {
 func TestTransactionItemPatch_RejectsNonPositiveQuantity(t *testing.T) {
 	existing := &domain.TransactionItem{ID: uuid.New(), Quantity: 2}
 	repo := &fakeItemRepo{getResult: existing}
-	uc := NewTransactionItemUsecase(repo)
+	uc := NewTransactionItemUsecase(repo, nil)
 
 	_, err := uc.Patch(context.Background(), existing.ID, &domain.PatchTransactionItemRequest{
 		Quantity: int64Ptr(0),
@@ -122,7 +122,7 @@ func TestTransactionItemPatch_AppliesOnlyPresentFields(t *testing.T) {
 		Subtotal:    4000,
 	}
 	repo := &fakeItemRepo{getResult: existing}
-	uc := NewTransactionItemUsecase(repo)
+	uc := NewTransactionItemUsecase(repo, nil)
 
 	got, err := uc.Patch(context.Background(), existing.ID, &domain.PatchTransactionItemRequest{
 		Quantity: int64Ptr(5),
@@ -144,7 +144,7 @@ func TestTransactionItemPatch_AppliesOnlyPresentFields(t *testing.T) {
 func TestTransactionItemPatch_PropagatesInsufficientStock(t *testing.T) {
 	existing := &domain.TransactionItem{ID: uuid.New(), Quantity: 2}
 	repo := &fakeItemRepo{getResult: existing, updateErr: domain.ErrInsufficientStock}
-	uc := NewTransactionItemUsecase(repo)
+	uc := NewTransactionItemUsecase(repo, nil)
 
 	_, err := uc.Patch(context.Background(), existing.ID, &domain.PatchTransactionItemRequest{
 		Quantity: int64Ptr(100),

@@ -8,18 +8,19 @@ import (
 	"github.com/google/uuid"
 
 	"jaga-warung-go/internal/domain"
+	"jaga-warung-go/pkg/kafka"
 )
 
-// TransactionUsecase implements domain.TransactionUseCase. Create is the sale
-// flow from docs/api.md § Business endpoints: it validates the body, checks
-// stock, and hands the header plus items to the repository, which writes them
-// atomically. No echo / HTTP dependency lives here.
+// TransactionUsecase implements domain.TransactionUseCase. The handler calls it after
+// parsing the request body; the usecase owns validation and delegation to the
+// repository. No echo / HTTP dependency lives here.
 type TransactionUsecase struct {
 	repo domain.TransactionRepository
+	pub  *kafka.Producer
 }
 
-func NewTransactionUsecase(repo domain.TransactionRepository) domain.TransactionUseCase {
-	return &TransactionUsecase{repo: repo}
+func NewTransactionUsecase(repo domain.TransactionRepository, pub *kafka.Producer) domain.TransactionUseCase {
+	return &TransactionUsecase{repo: repo, pub: pub}
 }
 
 func (uc *TransactionUsecase) List(ctx context.Context, page, limit int) (*domain.TransactionListResult, error) {
@@ -34,6 +35,9 @@ func (uc *TransactionUsecase) List(ctx context.Context, page, limit int) (*domai
 	}, nil
 }
 
+// Create is the sale flow from docs/api.md § Business endpoints: it validates
+// the body, checks stock, and hands the header plus items to the repository,
+// which writes them atomically.
 func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
 	if len(req.Items) == 0 {
 		return nil, domain.ErrBadRequest
@@ -85,6 +89,15 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 	if err := uc.repo.Create(ctx, t, items); err != nil {
 		return nil, err
 	}
+	// The repo returns the header only; embed the items so the event carries a
+	// complete receipt.
+	row := *t
+	row.Items = make([]domain.TransactionItem, len(items))
+	for i, item := range items {
+		row.Items[i] = *item
+	}
+	uc.pub.Publish(ctx, kafka.TopicEvents, t.ID.String(),
+		domain.NewEvent("transaction.created", "transaction", t.ID.String(), domain.NewTransactionEvent(&row)))
 	return t, nil
 }
 
@@ -123,11 +136,19 @@ func (uc *TransactionUsecase) Patch(ctx context.Context, id uuid.UUID, req *doma
 	if err := uc.repo.Update(ctx, cur); err != nil {
 		return nil, err
 	}
+	uc.pub.Publish(ctx, kafka.TopicEvents, cur.ID.String(),
+		domain.NewEvent("transaction.updated", "transaction", cur.ID.String(), domain.NewTransactionEvent(cur)))
 	return cur, nil
 }
 
 func (uc *TransactionUsecase) Delete(ctx context.Context, id uuid.UUID) error {
-	return uc.repo.Delete(ctx, id)
+	if err := uc.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	// Id-only: the row is gone, and Delete returns no data.
+	uc.pub.Publish(ctx, kafka.TopicEvents, id.String(),
+		domain.NewEvent("transaction.deleted", "transaction", id.String(), nil))
+	return nil
 }
 
 // normalizePage clamps pagination to the same defaults as products so every

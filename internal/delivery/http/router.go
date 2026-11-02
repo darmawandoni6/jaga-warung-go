@@ -11,10 +11,11 @@ import (
 	"jaga-warung-go/internal/delivery/http/middleware"
 	"jaga-warung-go/internal/repository"
 	"jaga-warung-go/internal/usecase"
+	"jaga-warung-go/pkg/kafka"
 )
 
 // SetupRouter mendaftarkan seluruh route dan menghubungkan layer dependency per domain
-func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
+func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config, pub *kafka.Producer) {
 	// Health Check
 	e.GET("/health", func(c echo.Context) error {
 
@@ -104,8 +105,8 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	transactionRepo := repository.NewTransactionRepo(db)
 	transactionItemRepo := repository.NewTransactionItemRepo(db)
 
-	transactionUsecase := usecase.NewTransactionUsecase(transactionRepo)
-	transactionItemUsecase := usecase.NewTransactionItemUsecase(transactionItemRepo)
+	transactionUsecase := usecase.NewTransactionUsecase(transactionRepo, pub)
+	transactionItemUsecase := usecase.NewTransactionItemUsecase(transactionItemRepo, pub)
 
 	transactionHandler := NewTransactionHandler(transactionUsecase)
 	transactionItemHandler := NewTransactionItemHandler(transactionItemUsecase)
@@ -168,7 +169,7 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config) {
 	// 6. Stock Movement Domain Wiring & Routing
 	// -------------------------------------------------------------
 	stockMovementRepo := repository.NewStockMovementRepo(db)
-	stockMovementUsecase := usecase.NewStockMovementUsecase(stockMovementRepo)
+	stockMovementUsecase := usecase.NewStockMovementUsecase(stockMovementRepo, pub)
 	stockMovementHandler := NewStockMovementHandler(stockMovementUsecase)
 
 	stockMovementGroup := v1.Group("/stock-movements")

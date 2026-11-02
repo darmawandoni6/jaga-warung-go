@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"jaga-warung-go/internal/domain"
+	"jaga-warung-go/pkg/kafka"
 )
 
 // TransactionItemUsecase implements domain.TransactionItemUseCase. Every write
@@ -15,10 +16,11 @@ import (
 // products.stock afterwards; the usecase only validates the request shape.
 type TransactionItemUsecase struct {
 	repo domain.TransactionItemRepository
+	pub  *kafka.Producer
 }
 
-func NewTransactionItemUsecase(repo domain.TransactionItemRepository) domain.TransactionItemUseCase {
-	return &TransactionItemUsecase{repo: repo}
+func NewTransactionItemUsecase(repo domain.TransactionItemRepository, pub *kafka.Producer) domain.TransactionItemUseCase {
+	return &TransactionItemUsecase{repo: repo, pub: pub}
 }
 
 func (uc *TransactionItemUsecase) List(ctx context.Context, page, limit int, transactionID *uuid.UUID) (*domain.TransactionItemListResult, error) {
@@ -54,6 +56,8 @@ func (uc *TransactionItemUsecase) Create(ctx context.Context, req *domain.Create
 	if err := uc.repo.Create(ctx, item); err != nil {
 		return nil, err
 	}
+	uc.pub.Publish(ctx, kafka.TopicEvents, item.ID.String(),
+		domain.NewEvent("transaction.item.created", "transaction.item", item.ID.String(), domain.NewTransactionItemEvent(item)))
 	return item, nil
 }
 
@@ -96,9 +100,17 @@ func (uc *TransactionItemUsecase) Patch(ctx context.Context, id uuid.UUID, req *
 	if err := uc.repo.Update(ctx, cur); err != nil {
 		return nil, err
 	}
+	uc.pub.Publish(ctx, kafka.TopicEvents, cur.ID.String(),
+		domain.NewEvent("transaction.item.updated", "transaction.item", cur.ID.String(), domain.NewTransactionItemEvent(cur)))
 	return cur, nil
 }
 
 func (uc *TransactionItemUsecase) Delete(ctx context.Context, id uuid.UUID) error {
-	return uc.repo.Delete(ctx, id)
+	if err := uc.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	// Id-only: the row is gone, and Delete returns no data.
+	uc.pub.Publish(ctx, kafka.TopicEvents, id.String(),
+		domain.NewEvent("transaction.item.deleted", "transaction.item", id.String(), nil))
+	return nil
 }

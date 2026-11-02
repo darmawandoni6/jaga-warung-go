@@ -51,7 +51,7 @@ func (f *fakeStockMovementRepo) Delete(ctx context.Context, id uuid.UUID) error 
 
 func TestStockMovementCreate_RejectsMissingBarcode(t *testing.T) {
 	repo := &fakeStockMovementRepo{}
-	uc := NewStockMovementUsecase(repo)
+	uc := NewStockMovementUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateStockMovementRequest{
 		Type: domain.MovementRestock, Quantity: 10,
@@ -65,7 +65,7 @@ func TestStockMovementCreate_RejectsMissingBarcode(t *testing.T) {
 }
 
 func TestStockMovementCreate_RejectsUnknownType(t *testing.T) {
-	uc := NewStockMovementUsecase(&fakeStockMovementRepo{})
+	uc := NewStockMovementUsecase(&fakeStockMovementRepo{}, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateStockMovementRequest{
 		ProductBarcode: "899",
@@ -78,7 +78,7 @@ func TestStockMovementCreate_RejectsUnknownType(t *testing.T) {
 }
 
 func TestStockMovementCreate_RejectsNonPositiveQuantity(t *testing.T) {
-	uc := NewStockMovementUsecase(&fakeStockMovementRepo{})
+	uc := NewStockMovementUsecase(&fakeStockMovementRepo{}, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateStockMovementRequest{
 		ProductBarcode: "899",
@@ -100,7 +100,7 @@ func TestStockMovementCreate_AcceptsAllValidTypes(t *testing.T) {
 		domain.MovementAdjustmentGain,
 	} {
 		repo := &fakeStockMovementRepo{}
-		uc := NewStockMovementUsecase(repo)
+		uc := NewStockMovementUsecase(repo, nil)
 
 		m, err := uc.Create(context.Background(), &domain.CreateStockMovementRequest{
 			ProductBarcode: "899",
@@ -121,7 +121,7 @@ func TestStockMovementCreate_AcceptsAllValidTypes(t *testing.T) {
 
 func TestStockMovementCreate_PropagatesInsufficientStock(t *testing.T) {
 	repo := &fakeStockMovementRepo{createErr: domain.ErrInsufficientStock}
-	uc := NewStockMovementUsecase(repo)
+	uc := NewStockMovementUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), &domain.CreateStockMovementRequest{
 		ProductBarcode: "899",
@@ -136,7 +136,7 @@ func TestStockMovementCreate_PropagatesInsufficientStock(t *testing.T) {
 func TestStockMovementPatch_RejectsUnknownType(t *testing.T) {
 	existing := &domain.StockMovement{ID: uuid.New(), Type: domain.MovementRestock, Quantity: 10}
 	repo := &fakeStockMovementRepo{getResult: existing}
-	uc := NewStockMovementUsecase(repo)
+	uc := NewStockMovementUsecase(repo, nil)
 
 	_, err := uc.Patch(context.Background(), existing.ID, &domain.PatchStockMovementRequest{
 		Type: strPtr("magic"),
@@ -152,7 +152,7 @@ func TestStockMovementPatch_RejectsUnknownType(t *testing.T) {
 func TestStockMovementPatch_RejectsNonPositiveQuantity(t *testing.T) {
 	existing := &domain.StockMovement{ID: uuid.New(), Type: domain.MovementRestock, Quantity: 10}
 	repo := &fakeStockMovementRepo{getResult: existing}
-	uc := NewStockMovementUsecase(repo)
+	uc := NewStockMovementUsecase(repo, nil)
 
 	_, err := uc.Patch(context.Background(), existing.ID, &domain.PatchStockMovementRequest{
 		Quantity: int64Ptr(-1),
@@ -171,7 +171,7 @@ func TestStockMovementPatch_AppliesOnlyPresentFields(t *testing.T) {
 		Note:      strPtr("restock"),
 	}
 	repo := &fakeStockMovementRepo{getResult: existing}
-	uc := NewStockMovementUsecase(repo)
+	uc := NewStockMovementUsecase(repo, nil)
 
 	got, err := uc.Patch(context.Background(), existing.ID, &domain.PatchStockMovementRequest{
 		Note: strPtr("restock big"),
@@ -189,7 +189,7 @@ func TestStockMovementPatch_AppliesOnlyPresentFields(t *testing.T) {
 
 func TestStockMovementList_PassesBarcodeFilter(t *testing.T) {
 	repo := &fakeStockMovementRepo{}
-	uc := NewStockMovementUsecase(repo)
+	uc := NewStockMovementUsecase(repo, nil)
 
 	if _, err := uc.List(context.Background(), 1, 20, "899"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
