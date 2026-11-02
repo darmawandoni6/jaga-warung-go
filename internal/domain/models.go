@@ -72,7 +72,7 @@ type Transaction struct {
 
 	SoftDelete `gorm:"embedded"`
 
-	Items []TransactionItem `gorm:"foreignKey:TransactionID;constraint:OnDelete:CASCADE" json:"-"`
+	Items []TransactionItem `gorm:"foreignKey:TransactionID;constraint:OnDelete:CASCADE" json:"items"`
 }
 
 // TransactionItem

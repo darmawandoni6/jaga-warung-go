@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -16,4 +18,13 @@ func InitLogger(cfg *config.Config) {
 		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel})
 	}
 	slog.SetDefault(slog.New(handler))
+}
+
+func Log(data interface{}) {
+	b, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		fmt.Println("marshal err:", err)
+	} else {
+		fmt.Println(string(b))
+	}
 }

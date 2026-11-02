@@ -4,18 +4,19 @@ meta {
   seq: 1
 }
 
-
 post {
   url: {{base_url}}/api/v1/debt-payments
   body: json
   auth: bearer
 }
 
-
 headers {
   Content-Type: application/json
 }
 
+auth:bearer {
+  token: {{access_token}}
+}
 
 body:json {
   {
@@ -26,11 +27,9 @@ body:json {
   }
 }
 
-
-auth:bearer {
-  token: {{access_token}}
+vars:pre-request {
+  debt_id: 11245867-8b77-4edc-bf8e-6561585f798a
 }
-
 
 tests {
   test('payment created', () => {
@@ -40,4 +39,3 @@ tests {
     bru.setVar('payment_id', res.body.data.payment.id);
   }
 }
-

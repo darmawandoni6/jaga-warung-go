@@ -125,14 +125,13 @@ func TestTransactionCreate_DerivesSubtotal(t *testing.T) {
 	}
 }
 
-// An explicit subtotal is respected, since a client may legitimately apply a
-// per-line discount.
-func TestTransactionCreate_KeepsExplicitSubtotal(t *testing.T) {
+// An explicit subtotal cannot override price × quantity.
+func TestTransactionCreate_DerivesSubtotalWhenExplicitSubtotalProvided(t *testing.T) {
 	repo := &fakeTransactionRepo{}
 	uc := NewTransactionUsecase(repo)
 
 	_, err := uc.Create(context.Background(), &domain.CreateTransactionRequest{
-		TotalAmount: 3500, PaymentAmount: 3500,
+		TotalAmount: 4000, PaymentAmount: 4000,
 		Items: []domain.CreateTransactionItemRequest{
 			{ProductBarcode: "899", SellPrice: 2000, Quantity: 2, Subtotal: int64Ptr(3500)},
 		},
@@ -141,8 +140,8 @@ func TestTransactionCreate_KeepsExplicitSubtotal(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if got := repo.createdIt[0].Subtotal; got != 3500 {
-		t.Fatalf("expected explicit subtotal 3500, got %d", got)
+	if got := repo.createdIt[0].Subtotal; got != 4000 {
+		t.Fatalf("expected derived subtotal 4000, got %d", got)
 	}
 }
 

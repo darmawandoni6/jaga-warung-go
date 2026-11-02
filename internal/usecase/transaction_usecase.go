@@ -42,6 +42,9 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 		return nil, domain.ErrBadRequest
 	}
 
+	totalAmount := int64(0)
+	changeAmount := int64(0)
+
 	items := make([]*domain.TransactionItem, 0, len(req.Items))
 	for _, in := range req.Items {
 		if in.ProductBarcode == "" {
@@ -50,12 +53,9 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 		if in.Quantity <= 0 {
 			return nil, domain.ErrBadRequest
 		}
-		// Subtotal is derived unless the client sent one; never let a line
-		// carry a subtotal that disagrees with price × quantity.
 		subtotal := in.SellPrice * in.Quantity
-		if in.Subtotal != nil {
-			subtotal = *in.Subtotal
-		}
+		totalAmount += subtotal
+
 		items = append(items, &domain.TransactionItem{
 			ProductBarcode: in.ProductBarcode,
 			ProductName:    in.ProductName,
@@ -65,16 +65,23 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 		})
 	}
 
+	changeAmount = req.PaymentAmount - totalAmount
+
+	if totalAmount != req.TotalAmount {
+		return nil, domain.ErrBadRequest
+	}
+
+	if changeAmount > 0 && req.ChangeAmount != changeAmount {
+		return nil, domain.ErrBadRequest
+	}
+
 	t := &domain.Transaction{
-		TotalAmount:   req.TotalAmount,
+		TotalAmount:   totalAmount,
 		PaymentAmount: req.PaymentAmount,
-		ChangeAmount:  req.ChangeAmount,
+		ChangeAmount:  changeAmount,
 		Note:          req.Note,
 	}
 
-	// The repository re-checks stock under a row lock; the usecase does not
-	// pre-read stock because the check must happen inside the same DB
-	// transaction as the write to be meaningful.
 	if err := uc.repo.Create(ctx, t, items); err != nil {
 		return nil, err
 	}

@@ -4,18 +4,19 @@ meta {
   seq: 1
 }
 
-
 post {
   url: {{base_url}}/api/v1/transactions
   body: json
   auth: bearer
 }
 
-
 headers {
   Content-Type: application/json
 }
 
+auth:bearer {
+  token: {{access_token}}
+}
 
 body:json {
   {
@@ -33,11 +34,9 @@ body:json {
   }
 }
 
-
-auth:bearer {
-  token: {{access_token}}
+vars:pre-request {
+  product_barcode: 8990000000033
 }
-
 
 tests {
   test('sale created', () => {
@@ -47,4 +46,3 @@ tests {
     bru.setVar('transaction_id', res.body.data.id);
   }
 }
-

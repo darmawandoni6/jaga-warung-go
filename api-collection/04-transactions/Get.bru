@@ -4,22 +4,22 @@ meta {
   seq: 3
 }
 
-
 get {
   url: {{base_url}}/api/v1/transactions/{{transaction_id}}
   body: none
   auth: bearer
 }
 
-
 auth:bearer {
   token: {{access_token}}
 }
 
+vars:pre-request {
+  transaction_id: f5c8ffaf-54e6-413f-a3fa-71c9c67ee176
+}
 
 tests {
   test('returns 200', () => {
     expect(res.status).to.equal(200);
   });
 }
-

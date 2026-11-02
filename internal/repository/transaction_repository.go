@@ -33,16 +33,23 @@ func (r *transactionRepo) List(ctx context.Context, page, limit int) ([]*domain.
 
 	var list []*domain.Transaction
 	offset := (page - 1) * limit
-	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&list).Error; err != nil {
+	err := q.Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Preload("Items").
+		Find(&list).Error
+
+	if err != nil {
 		return nil, 0, err
 	}
+
 	return list, total, nil
 }
 
 func (r *transactionRepo) Get(ctx context.Context, id uuid.UUID) (*domain.Transaction, error) {
 	var t domain.Transaction
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted_at IS NULL", id).
+		Where("id = ? AND deleted_at IS NULL", id).Preload("Items").
 		First(&t).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
