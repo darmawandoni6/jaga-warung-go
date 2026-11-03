@@ -35,8 +35,8 @@ services:
     # kafka is optional: no depends_on, API boots and publishes only when
     # KAFKA_BROKERS is set (publish failures are logged, never fatal).
 
-  # Log-only consumer. No DB, no API secrets: entrypoint overrides the image's
-  # default /api. Reader retries until kafka-init has created the topic.
+  # Stock consumer. Needs the DB (it applies the sale's stock side effects) but
+  # no API secrets: entrypoint overrides the image's default /api.
   worker:
     build: .
     entrypoint: ["/worker"]
@@ -44,7 +44,10 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_GROUP_ID: jaga-warung-worker
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: host=db user=postgres password=postgres dbname=jaga_warung port=5432 sslmode=disable TimeZone=Asia/Jakarta
     depends_on:
+      db:
+        condition: service_healthy
       kafka:
         condition: service_healthy
 
@@ -76,8 +79,9 @@ services:
       timeout: 10s
       retries: 10
 
-  # One-shot: creates the topic explicitly. Broker auto-create proved unreliable
-  # in the Kafka 4 image, and this pins partitions=1 regardless of defaults.
+  # One-shot: creates the topics explicitly. Broker auto-create proved unreliable
+  # in the Kafka 4 image, and this pins partitions=1 regardless of defaults. The
+  # DLQ is created up front so a failing rebuild never depends on auto-create.
   kafka-init:
     image: docker.io/apache/kafka:4.3.0
     depends_on:
@@ -89,7 +93,9 @@ services:
         until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list >/dev/null 2>&1;
         do sleep 2; done;
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
-        --if-not-exists --topic jaga-warung.events --partitions 1 --replication-factor 1
+        --if-not-exists --topic jaga-warung.events --partitions 1 --replication-factor 1;
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
+        --if-not-exists --topic jaga-warung.events.dlq --partitions 1 --replication-factor 1
     restart: "no"
 
 volumes:

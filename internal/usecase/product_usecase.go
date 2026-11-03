@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"jaga-warung-go/internal/domain"
 )
 
@@ -150,4 +152,14 @@ func (uc *ProductUsecase) Restore(ctx context.Context, barcode string) (*domain.
 
 func (uc *ProductUsecase) LowStock(ctx context.Context) ([]*domain.Product, int64, error) {
 	return uc.repo.CountBelow(ctx, 0)
+}
+
+// RebuildStock applies the stock side effects of one sale. Worker-only: the
+// HTTP handlers never call it. Errors are wrapped, not translated — the caller
+// is the Kafka consumer, which decides between retry and DLQ.
+func (uc *ProductUsecase) RebuildStock(ctx context.Context, transactionID uuid.UUID) error {
+	if err := uc.repo.RebuildStockForTransaction(ctx, transactionID); err != nil {
+		return fmt.Errorf("stock rebuild: %w", err)
+	}
+	return nil
 }

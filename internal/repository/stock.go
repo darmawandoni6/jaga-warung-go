@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -138,6 +140,36 @@ func rebuildStock(tx *gorm.DB, barcode string) error {
 		return err
 	}
 	return writeStockCache(tx, barcode, stock)
+}
+
+// rebuildStockForTransaction applies a sale's stock side effects. The API write
+// commits the header and items and returns; the worker calls this afterwards
+// from the event, so stock is eventually consistent.
+//
+// Idempotent and order-independent: the numbers are derived from the live
+// transaction_items rows, so replaying an event or processing two sales of the
+// same product out of order converges to the same sum.
+func rebuildStockForTransaction(ctx context.Context, db *gorm.DB, txID uuid.UUID) error {
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var barcodes []string
+		// No deleted_at filter: a removed line still has to release its quantity.
+		err := tx.Raw(`SELECT DISTINCT product_barcode FROM transaction_items WHERE transaction_id = ?`, txID).
+			Scan(&barcodes).Error
+		if err != nil {
+			return err
+		}
+		for _, barcode := range barcodes {
+			// Same row lock as the API writes: a manual movement and an event
+			// rebuild of the same product must not interleave.
+			if _, err := lockProduct(tx, barcode); err != nil {
+				return err
+			}
+			if err := rebuildStock(tx, barcode); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // writeStockCacheWithCheck recomputes the cached stock from the movement log and

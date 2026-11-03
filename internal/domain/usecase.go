@@ -36,6 +36,10 @@ type ProductUseCase interface {
 	Delete(ctx context.Context, barcode string) error
 	Restore(ctx context.Context, barcode string) (*Product, error)
 	LowStock(ctx context.Context) ([]*Product, int64, error)
+
+	// RebuildStock applies a sale's stock side effects. Worker-only entry point:
+	// delivery/kafka calls it after the API has committed the sale rows.
+	RebuildStock(ctx context.Context, transactionID uuid.UUID) error
 }
 
 // CategoryUseCase is the port for category CRUD. category_usecase.go

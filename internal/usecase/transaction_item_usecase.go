@@ -12,8 +12,8 @@ import (
 )
 
 // TransactionItemUsecase implements domain.TransactionItemUseCase. Every write
-// here changes how much of a product was sold, so the repository rebuilds
-// products.stock afterwards; the usecase only validates the request shape.
+// here changes how much of a product was sold; the repository only touches the
+// line rows, and the Kafka worker rebuilds products.stock from the event.
 type TransactionItemUsecase struct {
 	repo domain.TransactionItemRepository
 	pub  *kafka.Producer
@@ -57,7 +57,7 @@ func (uc *TransactionItemUsecase) Create(ctx context.Context, req *domain.Create
 		return nil, err
 	}
 	uc.pub.Publish(ctx, kafka.TopicEvents, item.ID.String(),
-		domain.NewEvent("transaction.item.created", "transaction.item", item.ID.String(), domain.NewTransactionItemEvent(item)))
+		domain.NewEvent(domain.EventTypeTransactionItemCreated, "transaction.item", item.ID.String(), domain.NewTransactionItemEvent(item)))
 	return item, nil
 }
 
@@ -101,16 +101,26 @@ func (uc *TransactionItemUsecase) Patch(ctx context.Context, id uuid.UUID, req *
 		return nil, err
 	}
 	uc.pub.Publish(ctx, kafka.TopicEvents, cur.ID.String(),
-		domain.NewEvent("transaction.item.updated", "transaction.item", cur.ID.String(), domain.NewTransactionItemEvent(cur)))
+		domain.NewEvent(domain.EventTypeTransactionItemUpdated, "transaction.item", cur.ID.String(), domain.NewTransactionItemEvent(cur)))
 	return cur, nil
 }
 
 func (uc *TransactionItemUsecase) Delete(ctx context.Context, id uuid.UUID) error {
+	// Fetch first: the worker needs the parent sale to rebuild that product's
+	// stock, and a deleted row is the only place to learn it.
+	item, err := uc.repo.Get(ctx, id)
+	if err != nil {
+		return err
+	}
 	if err := uc.repo.Delete(ctx, id); err != nil {
 		return err
 	}
-	// Id-only: the row is gone, and Delete returns no data.
 	uc.pub.Publish(ctx, kafka.TopicEvents, id.String(),
-		domain.NewEvent("transaction.item.deleted", "transaction.item", id.String(), nil))
+		domain.NewEvent(domain.EventTypeTransactionItemDeleted, "transaction.item", id.String(),
+			domain.TransactionItemEvent{
+				ID:             item.ID,
+				TransactionID:  item.TransactionID,
+				ProductBarcode: item.ProductBarcode,
+			}))
 	return nil
 }

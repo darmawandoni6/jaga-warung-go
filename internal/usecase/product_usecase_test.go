@@ -5,18 +5,22 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"jaga-warung-go/internal/domain"
 )
 
 type fakeProductRepo struct {
-	created   *domain.Product
-	getResult *domain.Product
-	getErr    error
-	updated   *domain.Product
-	updateErr error
-	listCat   *int64
-	listAll   bool
-	restored  string
+	created    *domain.Product
+	getResult  *domain.Product
+	getErr     error
+	updated    *domain.Product
+	updateErr  error
+	listCat    *int64
+	listAll    bool
+	restored   string
+	rebuilt    uuid.UUID
+	rebuildErr error
 }
 
 func (f *fakeProductRepo) List(ctx context.Context, page, limit int, search string, categoryID *int64, includeInactive bool) ([]*domain.Product, int64, error) {
@@ -57,6 +61,11 @@ func (f *fakeProductRepo) CountBelow(ctx context.Context, minStock int64) ([]*do
 }
 
 func (f *fakeProductRepo) All(ctx context.Context) []*domain.Product { return nil }
+
+func (f *fakeProductRepo) RebuildStockForTransaction(ctx context.Context, transactionID uuid.UUID) error {
+	f.rebuilt = transactionID
+	return f.rebuildErr
+}
 
 type fakeCategoryRepo struct {
 	domain.CategoryRepository

@@ -62,7 +62,7 @@ func (uc *StockMovementUsecase) Create(ctx context.Context, req *domain.CreateSt
 		return nil, err
 	}
 	uc.pub.Publish(ctx, kafka.TopicEvents, m.ID.String(),
-		domain.NewEvent("stock.movement.created", "stock.movement", m.ID.String(), domain.NewStockMovementEvent(m)))
+		domain.NewEvent(domain.EventTypeStockMovementCreated, "stock.movement", m.ID.String(), domain.NewStockMovementEvent(m)))
 	return m, nil
 }
 
@@ -112,7 +112,7 @@ func (uc *StockMovementUsecase) Patch(ctx context.Context, id uuid.UUID, req *do
 		return nil, err
 	}
 	uc.pub.Publish(ctx, kafka.TopicEvents, cur.ID.String(),
-		domain.NewEvent("stock.movement.updated", "stock.movement", cur.ID.String(), domain.NewStockMovementEvent(cur)))
+		domain.NewEvent(domain.EventTypeStockMovementUpdated, "stock.movement", cur.ID.String(), domain.NewStockMovementEvent(cur)))
 	return cur, nil
 }
 
@@ -122,6 +122,6 @@ func (uc *StockMovementUsecase) Delete(ctx context.Context, id uuid.UUID) error 
 	}
 	// Id-only: the row is gone, and Delete returns no data.
 	uc.pub.Publish(ctx, kafka.TopicEvents, id.String(),
-		domain.NewEvent("stock.movement.deleted", "stock.movement", id.String(), nil))
+		domain.NewEvent(domain.EventTypeStockMovementDeleted, "stock.movement", id.String(), nil))
 	return nil
 }

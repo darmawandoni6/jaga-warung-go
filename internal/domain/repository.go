@@ -36,6 +36,11 @@ type ProductRepository interface {
 	Restore(ctx context.Context, barcode string) (*Product, error)
 	CountBelow(ctx context.Context, minStock int64) ([]*Product, int64, error)
 	All(ctx context.Context) []*Product // for migration seed, not a business query
+
+	// RebuildStockForTransaction recomputes products.stock for every product a
+	// sale touched. Worker-only: delivery/kafka drives it through
+	// ProductUseCase.RebuildStock, never through an HTTP handler.
+	RebuildStockForTransaction(ctx context.Context, transactionID uuid.UUID) error
 }
 
 // CategoryRepository persists categories. The handler talks through this

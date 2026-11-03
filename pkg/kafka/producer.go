@@ -14,6 +14,10 @@ import (
 // TopicEvents is the single topic every domain event lands on.
 const TopicEvents = "jaga-warung.events"
 
+// TopicDLQ collects events the worker could not apply. It is a dead end, not a
+// retry queue: replay it by hand once the cause is fixed.
+const TopicDLQ = "jaga-warung.events.dlq"
+
 // Producer writes events. An empty broker list returns a disabled no-op so
 // KAFKA_BROKERS can stay unset.
 type Producer struct {
@@ -30,6 +34,7 @@ func NewProducer(brokers []string) *Producer {
 		Balancer:               &kafkago.Hash{},
 		WriteTimeout:           2 * time.Second,
 		AllowAutoTopicCreation: true,
+		Async:                  true,
 	}}
 }
 

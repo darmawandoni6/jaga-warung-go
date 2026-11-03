@@ -7,6 +7,23 @@ import (
 	"github.com/google/uuid"
 )
 
+// Event types.
+const (
+	EventTypeTransactionCreated = "transaction.created"
+	EventTypeTransactionUpdated = "transaction.updated"
+	EventTypeTransactionDeleted = "transaction.deleted"
+
+	EventTypeTransactionItemCreated = "transaction.item.created"
+	EventTypeTransactionItemUpdated = "transaction.item.updated"
+	EventTypeTransactionItemDeleted = "transaction.item.deleted"
+
+	EventTypeStockMovementCreated = "stock.movement.created"
+	EventTypeStockMovementUpdated = "stock.movement.updated"
+	EventTypeStockMovementDeleted = "stock.movement.deleted"
+
+	EventTypeEventProcessingFailed = "event.processing.failed"
+)
+
 // Event is the envelope every Kafka message carries. Data holds the marshalled
 // payload and is absent for id-only events (soft deletes). One type is used on
 // both sides of the wire: the producer marshals it, the consumer unmarshals it
@@ -72,6 +89,18 @@ type StockMovementEvent struct {
 	TotalCost      int64     `json:"total_cost"`
 	Note           *string   `json:"note"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// ConsumerFailureEvent is the payload published to the DLQ when the consumer
+// cannot apply an event. OriginalData is copied verbatim so the message can be
+// replayed by hand once the cause is fixed.
+type ConsumerFailureEvent struct {
+	OriginalEventID string          `json:"original_event_id"`
+	OriginalType    string          `json:"original_type"`
+	EntityID        string          `json:"entity_id"`
+	OriginalData    json.RawMessage `json:"original_data,omitempty"`
+	Error           string          `json:"error"`
+	At              time.Time       `json:"at"`
 }
 
 // NewTransactionEvent maps a transaction row (with Items already populated)

@@ -19,7 +19,7 @@ KAFKA_GROUP_ID  ?= jaga-warung-worker
 help:
 	@echo 'Targets:'
 	@echo '  make run          — local dev (requires running Postgres; reads .env when present)'
-	@echo '  make worker       — kafka log-only consumer (needs KAFKA_BROKERS)'
+	@echo '  make worker       — kafka stock consumer (needs KAFKA_BROKERS + Postgres)'
 	@echo '  make docker       — start db + kafka + api + worker with podman-compose (reads .env via docker-compose)'
 	@echo '  make docker-db    — start only postgres in background'
 	@echo '  make docker-kafka — start only kafka + topic init in background (optional, publisher needs KAFKA_BROKERS)'
@@ -58,6 +58,7 @@ run:
 worker:
 	KAFKA_BROKERS="$(KAFKA_BROKERS)" \
 	KAFKA_GROUP_ID="$(KAFKA_GROUP_ID)" \
+	DATABASE_URL="$(DATABASE_URL)" \
 	LOG_LEVEL="$(LOG_LEVEL)" \
 	go run ./cmd/worker
 

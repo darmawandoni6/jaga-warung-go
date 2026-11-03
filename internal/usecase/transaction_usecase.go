@@ -36,8 +36,8 @@ func (uc *TransactionUsecase) List(ctx context.Context, page, limit int) (*domai
 }
 
 // Create is the sale flow from docs/api.md § Business endpoints: it validates
-// the body, checks stock, and hands the header plus items to the repository,
-// which writes them atomically.
+// the body and hands the header plus items to the repository. Stock is applied
+// afterwards by the Kafka worker from transaction.created.
 func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
 	if len(req.Items) == 0 {
 		return nil, domain.ErrBadRequest
@@ -97,7 +97,7 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 		row.Items[i] = *item
 	}
 	uc.pub.Publish(ctx, kafka.TopicEvents, t.ID.String(),
-		domain.NewEvent("transaction.created", "transaction", t.ID.String(), domain.NewTransactionEvent(&row)))
+		domain.NewEvent(domain.EventTypeTransactionCreated, "transaction", t.ID.String(), domain.NewTransactionEvent(&row)))
 	return t, nil
 }
 
@@ -137,7 +137,7 @@ func (uc *TransactionUsecase) Patch(ctx context.Context, id uuid.UUID, req *doma
 		return nil, err
 	}
 	uc.pub.Publish(ctx, kafka.TopicEvents, cur.ID.String(),
-		domain.NewEvent("transaction.updated", "transaction", cur.ID.String(), domain.NewTransactionEvent(cur)))
+		domain.NewEvent(domain.EventTypeTransactionUpdated, "transaction", cur.ID.String(), domain.NewTransactionEvent(cur)))
 	return cur, nil
 }
 
@@ -147,7 +147,7 @@ func (uc *TransactionUsecase) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 	// Id-only: the row is gone, and Delete returns no data.
 	uc.pub.Publish(ctx, kafka.TopicEvents, id.String(),
-		domain.NewEvent("transaction.deleted", "transaction", id.String(), nil))
+		domain.NewEvent(domain.EventTypeTransactionDeleted, "transaction", id.String(), nil))
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -23,6 +24,10 @@ type productRepo struct{ db *gorm.DB }
 
 func NewProductRepo(db *gorm.DB) domain.ProductRepository {
 	return &productRepo{db: db}
+}
+
+func (r *productRepo) RebuildStockForTransaction(ctx context.Context, transactionID uuid.UUID) error {
+	return rebuildStockForTransaction(ctx, r.db, transactionID)
 }
 
 func (r *productRepo) List(ctx context.Context, page, limit int, search string, categoryID *int64, includeInactive bool) ([]*domain.Product, int64, error) {
