@@ -16,6 +16,10 @@ COMPOSE         ?= podman-compose
 KAFKA_BROKERS   ?=
 KAFKA_GROUP_ID  ?= jaga-warung-worker
 
+# Export every variable (imported .env + the defaults above) so `make run` and
+# `make worker` see MIDTRANS_* and any other .env key without listing it inline.
+export
+
 help:
 	@echo 'Targets:'
 	@echo '  make run          — local dev (requires running Postgres; reads .env when present)'
@@ -46,20 +50,9 @@ help:
 	@echo 'Command-line > .env > Makefile ?= defaults.'
 
 run:
-	JWT_SECRET="$(JWT_SECRET)" \
-	DATABASE_URL="$(DATABASE_URL)" \
-	PORT="$(PORT)" \
-	LOG_LEVEL="$(LOG_LEVEL)" \
-	ADMIN_PHONE="$(ADMIN_PHONE)" \
-	ADMIN_PASSWORD="$(ADMIN_PASSWORD)" \
-	KAFKA_BROKERS="$(KAFKA_BROKERS)" \
 	go run ./cmd/api
 
 worker:
-	KAFKA_BROKERS="$(KAFKA_BROKERS)" \
-	KAFKA_GROUP_ID="$(KAFKA_GROUP_ID)" \
-	DATABASE_URL="$(DATABASE_URL)" \
-	LOG_LEVEL="$(LOG_LEVEL)" \
 	go run ./cmd/worker
 
 build:
