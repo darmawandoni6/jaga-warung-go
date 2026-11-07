@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -23,9 +24,9 @@ func NewTransactionUsecase(repo domain.TransactionRepository, pub *kafka.Produce
 	return &TransactionUsecase{repo: repo, pub: pub}
 }
 
-func (uc *TransactionUsecase) List(ctx context.Context, page, limit int) (*domain.TransactionListResult, error) {
+func (uc *TransactionUsecase) List(ctx context.Context, page, limit int, status string) (*domain.TransactionListResult, error) {
 	page, limit = normalizePage(page, limit)
-	data, total, err := uc.repo.List(ctx, page, limit)
+	data, total, err := uc.repo.List(ctx, page, limit, status)
 	if err != nil {
 		return nil, fmt.Errorf("transaction list: %w", err)
 	}
@@ -42,7 +43,17 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 	if len(req.Items) == 0 {
 		return nil, domain.ErrBadRequest
 	}
-	if req.PaymentAmount < req.TotalAmount {
+
+	method := req.Method
+	if method == "" {
+		method = domain.PaymentMethodCash
+	}
+	if method != domain.PaymentMethodCash && method != domain.PaymentMethodNonCash {
+		return nil, domain.ErrBadRequest
+	}
+	// non_cash is "record now, pay later": the amount is settled by the gateway,
+	// so the client cannot claim it. Cash keeps the existing tender validation.
+	if method == domain.PaymentMethodCash && req.PaymentAmount < req.TotalAmount {
 		return nil, domain.ErrBadRequest
 	}
 
@@ -69,7 +80,12 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 		})
 	}
 
-	changeAmount = req.PaymentAmount - totalAmount
+	paymentAmount := req.PaymentAmount
+	if method == domain.PaymentMethodNonCash {
+		paymentAmount = 0
+	} else {
+		changeAmount = req.PaymentAmount - totalAmount
+	}
 
 	if totalAmount != req.TotalAmount {
 		return nil, domain.ErrBadRequest
@@ -81,9 +97,15 @@ func (uc *TransactionUsecase) Create(ctx context.Context, req *domain.CreateTran
 
 	t := &domain.Transaction{
 		TotalAmount:   totalAmount,
-		PaymentAmount: req.PaymentAmount,
+		PaymentAmount: paymentAmount,
 		ChangeAmount:  changeAmount,
+		Method:        method,
+		Status:        domain.DeriveTransactionStatus(method, totalAmount, paymentAmount),
 		Note:          req.Note,
+	}
+	if t.Status == domain.TransactionStatusPaid {
+		now := time.Now().UTC()
+		t.PaidAt = &now
 	}
 
 	if err := uc.repo.Create(ctx, t, items); err != nil {
@@ -120,19 +142,61 @@ func (uc *TransactionUsecase) Patch(ctx context.Context, id uuid.UUID, req *doma
 		}
 		return nil, fmt.Errorf("transaction patch get: %w", err)
 	}
+
+	// paid is terminal: money already moved, so no amount and no method may
+	// change afterwards. Corrections go through a new sale, not an edit.
+	if cur.Status == domain.TransactionStatusPaid &&
+		(req.Method != nil || req.PaymentAmount != nil || req.ChangeAmount != nil) {
+		return nil, domain.ErrBadRequest
+	}
+
+	// Method only moves non_cash→cash. That is the recovery path when the gateway
+	// attempt fails and the customer pays cash instead.
+	if req.Method != nil {
+		if *req.Method != domain.PaymentMethodCash || cur.Method != domain.PaymentMethodNonCash {
+			return nil, domain.ErrBadRequest
+		}
+		if req.PaymentAmount == nil {
+			return nil, domain.ErrBadRequest
+		}
+	}
+
+	// While still non_cash, the amounts belong to the gateway or to the
+	// non_cash→cash switch above — never to a plain amount patch.
+	if cur.Method == domain.PaymentMethodNonCash && req.Method == nil &&
+		(req.PaymentAmount != nil || req.ChangeAmount != nil) {
+		return nil, domain.ErrBadRequest
+	}
+
 	// Apply explicit values; nil fields keep their current value.
 	if req.TotalAmount != nil {
 		cur.TotalAmount = *req.TotalAmount
 	}
-	if req.PaymentAmount != nil {
-		cur.PaymentAmount = *req.PaymentAmount
-	}
-	if req.ChangeAmount != nil {
-		cur.ChangeAmount = *req.ChangeAmount
-	}
 	if req.Note != nil {
 		cur.Note = req.Note
 	}
+
+	switch {
+	case req.Method != nil:
+		tender := *req.PaymentAmount
+		if tender < cur.TotalAmount {
+			return nil, domain.ErrBadRequest
+		}
+		cur.Method = domain.PaymentMethodCash
+		cur.PaymentAmount = tender
+		cur.ChangeAmount = tender - cur.TotalAmount
+		cur.Status = domain.DeriveTransactionStatus(domain.PaymentMethodCash, cur.TotalAmount, tender)
+		now := time.Now().UTC()
+		cur.PaidAt = &now
+	default:
+		if req.PaymentAmount != nil {
+			cur.PaymentAmount = *req.PaymentAmount
+		}
+		if req.ChangeAmount != nil {
+			cur.ChangeAmount = *req.ChangeAmount
+		}
+	}
+
 	if err := uc.repo.Update(ctx, cur); err != nil {
 		return nil, err
 	}

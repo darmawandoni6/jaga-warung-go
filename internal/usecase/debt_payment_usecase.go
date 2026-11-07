@@ -41,9 +41,18 @@ func (uc *DebtPaymentUsecase) Create(ctx context.Context, req *domain.CreateDebt
 		return nil, domain.ErrBadRequest
 	}
 
+	method := req.Method
+	if method == "" {
+		method = domain.PaymentMethodCash
+	}
+	if method != domain.PaymentMethodCash && method != domain.PaymentMethodQRIS {
+		return nil, domain.ErrBadRequest
+	}
+
 	payment := &domain.DebtPayment{
 		DebtID: req.DebtID,
 		Amount: req.Amount,
+		Method: method,
 		Note:   req.Note,
 	}
 

@@ -1,0 +1,49 @@
+meta {
+  name: Notification
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/v1/payments/notification
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "order_id": "{{order_id}}",
+    "status_code": "200",
+    "gross_amount": "4000.00",
+    "signature_key": "{{signature_key}}",
+    "transaction_status": "settlement",
+    "transaction_id": "00000000-0000-0000-0000-000000000000",
+    "payment_type": "qris",
+    "fraud_status": "accept",
+    "transaction_time": "2026-01-01 10:00:00",
+    "settlement_time": "2026-01-01 10:00:05"
+  }
+}
+
+tests {
+  test('always 200 (ignored or ok)', () => {
+    expect(res.status).to.equal(200);
+  });
+}
+
+docs {
+  Public endpoint — Midtrans posts here, no bearer token.
+  
+  The handler never trusts this body:
+    1. signature_key must equal
+       sha512(order_id + status_code + gross_amount + MIDTRANS_SERVER_KEY)
+    2. then it re-queries CheckTransaction and uses that as the truth
+  
+  So a hand-written call with a fake signature_key is answered
+  200 {"message":"ignored"} and changes nothing. Use it only to confirm the
+  endpoint is reachable; real settlement must come from Midtrans (or ngrok).
+}

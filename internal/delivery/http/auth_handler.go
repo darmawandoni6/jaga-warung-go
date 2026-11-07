@@ -94,6 +94,12 @@ func dbError(err error) *echo.HTTPError {
 	// client why it was rejected.
 	case errors.Is(err, domain.ErrInsufficientStock):
 		return echo.NewHTTPError(http.StatusConflict, "insufficient stock")
+	// Any other DomainError (e.g. midtrans_not_configured) carries its own
+	// status. Placed after the sentinels so their messages stay stable.
+	case errors.As(err, new(*domain.DomainError)):
+		var de *domain.DomainError
+		errors.As(err, &de)
+		return echo.NewHTTPError(de.HTTPStatus(), de.Error())
 	// GORM is opened with TranslateError: true, so unique/FK violations arrive
 	// as these sentinels instead of raw pgx errors. Without this they would
 	// surface as 500.

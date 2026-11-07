@@ -27,7 +27,14 @@ func (h *TransactionHandler) List(c echo.Context) error {
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 
-	result, err := h.transactionUsecase.List(ctx, page, limit)
+	status := c.QueryParam("status")
+	switch status {
+	case "", domain.TransactionStatusPending, domain.TransactionStatusPaid, domain.TransactionStatusExpired:
+	default:
+		return echo.NewHTTPError(http.StatusBadRequest, "status must be pending, paid or expired")
+	}
+
+	result, err := h.transactionUsecase.List(ctx, page, limit, status)
 	if err != nil {
 		return dbError(err)
 	}
@@ -43,6 +50,7 @@ func (h *TransactionHandler) Create(c echo.Context) error {
 		TotalAmount   int64   `json:"total_amount"`
 		PaymentAmount int64   `json:"payment_amount"`
 		ChangeAmount  int64   `json:"change_amount"`
+		Method        string  `json:"method"`
 		Note          *string `json:"note"`
 		Items         []struct {
 			ProductBarcode string `json:"product_barcode"`
@@ -71,6 +79,7 @@ func (h *TransactionHandler) Create(c echo.Context) error {
 		TotalAmount:   req.TotalAmount,
 		PaymentAmount: req.PaymentAmount,
 		ChangeAmount:  req.ChangeAmount,
+		Method:        req.Method,
 		Note:          req.Note,
 		Items:         items,
 	})
@@ -109,6 +118,7 @@ func (h *TransactionHandler) Patch(c echo.Context) error {
 		TotalAmount   *int64  `json:"total_amount"`
 		PaymentAmount *int64  `json:"payment_amount"`
 		ChangeAmount  *int64  `json:"change_amount"`
+		Method        *string `json:"method"`
 		Note          *string `json:"note"`
 	}
 	if err := c.Bind(&req); err != nil {
@@ -119,6 +129,7 @@ func (h *TransactionHandler) Patch(c echo.Context) error {
 		TotalAmount:   req.TotalAmount,
 		PaymentAmount: req.PaymentAmount,
 		ChangeAmount:  req.ChangeAmount,
+		Method:        req.Method,
 		Note:          req.Note,
 	})
 	if err != nil {

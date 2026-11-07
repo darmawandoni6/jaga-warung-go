@@ -1,0 +1,33 @@
+meta {
+  name: List
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/v1/payments?target_type=transaction&target_id={{transaction_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+vars:pre-request {
+  transaction_id: 7660fb83-b89d-4343-8d27-99dc709b7f15
+}
+
+tests {
+  test('returns 200', () => {
+    expect(res.status).to.equal(200);
+  });
+}
+
+docs {
+  Reconciliation endpoint: every QRIS attempt for one transaction (or debt),
+  newest first. Drop target_type / target_id to list everything.
+  
+  For a debt, match the resulting debt_payments row with
+  payments.debt_payment_id — one debt can have several QRIS attempts.
+}

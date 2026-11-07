@@ -1,21 +1,28 @@
 meta {
   name: List
   type: http
-  seq: 2
+  seq: 3
 }
 
-
 get {
-  url: {{base_url}}/api/v1/transactions
+  url: {{base_url}}/api/v1/transactions?status={{status}}
   body: none
   auth: bearer
 }
 
+params:query {
+  status: pending
+  page: 1
+  limit: 20
+}
 
 auth:bearer {
   token: {{access_token}}
 }
 
+vars:pre-request {
+  status: pending
+}
 
 tests {
   test('returns 200', () => {
@@ -23,3 +30,11 @@ tests {
   });
 }
 
+docs {
+  status is optional: pending | paid | expired.
+  Leave it empty to list everything.
+  
+  pending  — non_cash sale, money not in yet
+  paid     — cash at create, or settled by the gateway, or non_cash→cash PATCH
+  expired  — the QRIS attempt failed; the sale is still recorded (stock moved)
+}

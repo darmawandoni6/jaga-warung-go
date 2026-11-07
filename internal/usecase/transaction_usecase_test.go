@@ -24,7 +24,7 @@ type fakeTransactionRepo struct {
 	deleteErr error
 }
 
-func (f *fakeTransactionRepo) List(ctx context.Context, page, limit int) ([]*domain.Transaction, int64, error) {
+func (f *fakeTransactionRepo) List(ctx context.Context, page, limit int, status string) ([]*domain.Transaction, int64, error) {
 	return nil, 0, nil
 }
 
@@ -213,7 +213,7 @@ func TestTransactionList_ClampsPagination(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			uc := NewTransactionUsecase(&fakeTransactionRepo{}, nil)
-			res, err := uc.List(context.Background(), tc.page, tc.limit)
+			res, err := uc.List(context.Background(), tc.page, tc.limit, "")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

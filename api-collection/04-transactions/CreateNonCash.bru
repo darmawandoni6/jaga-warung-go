@@ -1,0 +1,69 @@
+meta {
+  name: Create Non-Cash
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/v1/transactions
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "total_amount": 4000,
+    "payment_amount": 0,
+    "change_amount": 0,
+    "method": "non_cash",
+    "items": [
+      {
+        "product_barcode": "{{product_barcode}}",
+        "product_name": "Kopi Sachet",
+        "sell_price": 2000,
+        "quantity": 2
+      }
+    ]
+  }
+}
+
+vars:pre-request {
+  product_barcode: 8990000000033
+}
+
+script:post-response {
+  // Post Response Script
+  const body = res.getBody();
+  
+  if (res.getStatus() === 201 && body.data) {
+    const { id } = body.data;  
+    bru.setEnvVar("transaction_id", id);
+    console.log("Transaction ID saved:", id);
+  } else {
+    console.error("Could not find transaction ID in response");
+  }
+}
+
+docs {
+  "record now, pay later": the sale is written and stock is applied at create
+  time, the money arrives later through the gateway.
+
+  method is non_cash, not qris: Snap decides the actual channel (qris, gopay,
+  shopeepay, ...) and that value lands in payments.payment_type after the
+  notification or GET /payments/:id?verify=true.
+
+  The server forces payment_amount = 0 and change_amount = 0 for non_cash, so
+  the client cannot claim the sale is paid. Cash keeps the old tender validation
+  (payment_amount >= total_amount).
+
+  Next step: POST /payments with target_type "transaction" and this id.
+  PATCH rejects payment_amount / change_amount once method is non_cash.
+}

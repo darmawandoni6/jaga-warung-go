@@ -12,17 +12,20 @@ const defaultDSN = "host=localhost user=postgres password=postgres dbname=jaga_w
 
 // Config is the process environment, loaded once at startup.
 type Config struct {
-	DatabaseURL   string
-	Port          string
-	LogLevel      slog.Level
-	JWTSecret     string
-	AccessTTL     time.Duration
-	RefreshTTL    time.Duration
-	AdminPhone    string
-	AdminPassword string
-	KafkaBrokers  []string
-	KafkaGroupID  string
-	isDebug       bool
+	DatabaseURL         string
+	Port                string
+	LogLevel            slog.Level
+	JWTSecret           string
+	AccessTTL           time.Duration
+	RefreshTTL          time.Duration
+	AdminPhone          string
+	AdminPassword       string
+	KafkaBrokers        []string
+	KafkaGroupID        string
+	MidtransServerKey   string
+	MidtransClientKey   string
+	MidtransEnvironment string
+	isDebug             bool
 }
 
 // LoadConfig reads process env. It does NOT read a .env file — there is no
@@ -30,17 +33,20 @@ type Config struct {
 // (env_file) to supply these.
 func LoadConfig() *Config {
 	return &Config{
-		DatabaseURL:   getEnv("DATABASE_URL", defaultDSN),
-		Port:          getEnv("PORT", "8080"),
-		LogLevel:      parseLevel(getEnv("LOG_LEVEL", "info")),
-		JWTSecret:     getEnv("JWT_SECRET", ""),
-		AccessTTL:     getDuration("ACCESS_TTL", 15*time.Minute),
-		RefreshTTL:    getDuration("REFRESH_TTL", 720*time.Hour),
-		AdminPhone:    getEnv("ADMIN_PHONE", ""),
-		AdminPassword: getEnv("ADMIN_PASSWORD", ""),
-		KafkaBrokers:  splitCSV(getEnv("KAFKA_BROKERS", "")),
-		KafkaGroupID:  getEnv("KAFKA_GROUP_ID", "jaga-warung-worker"),
-		isDebug:       getEnv("DEBUG", "false") == "true",
+		DatabaseURL:         getEnv("DATABASE_URL", defaultDSN),
+		Port:                getEnv("PORT", "8080"),
+		LogLevel:            parseLevel(getEnv("LOG_LEVEL", "info")),
+		JWTSecret:           getEnv("JWT_SECRET", ""),
+		AccessTTL:           getDuration("ACCESS_TTL", 15*time.Minute),
+		RefreshTTL:          getDuration("REFRESH_TTL", 720*time.Hour),
+		AdminPhone:          getEnv("ADMIN_PHONE", ""),
+		AdminPassword:       getEnv("ADMIN_PASSWORD", ""),
+		KafkaBrokers:        splitCSV(getEnv("KAFKA_BROKERS", "")),
+		KafkaGroupID:        getEnv("KAFKA_GROUP_ID", "jaga-warung-worker"),
+		MidtransServerKey:   getEnv("MIDTRANS_SERVER_KEY", ""),
+		MidtransClientKey:   getEnv("MIDTRANS_CLIENT_KEY", ""),
+		MidtransEnvironment: getEnv("MIDTRANS_ENV", "sandbox"),
+		isDebug:             getEnv("DEBUG", "false") == "true",
 	}
 }
 

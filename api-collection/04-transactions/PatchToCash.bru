@@ -1,0 +1,54 @@
+meta {
+  name: Patch To Cash
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{base_url}}/api/v1/transactions/{{transaction_id}}
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "method": "cash",
+    "payment_amount": 5000
+  }
+}
+
+docs {
+  Recovery path when a gateway attempt fails and the customer pays cash.
+
+  Allowed only non_cash→cash, only while status is pending or expired, and the
+  request must carry payment_amount >= total_amount. The server then sets:
+    method        = cash
+    change_amount = payment_amount - total_amount
+    status        = paid
+    paid_at       = now
+
+  Rejected with 400 when:
+    - the sale is already paid (paid is terminal)
+    - method moves cash→non_cash
+    - payment_amount is missing or less than total_amount
+
+  Any dangling gateway attempt stays in payments until Midtrans settles or
+  expires it. If it settles anyway, the payment row records the extra charge but
+  transactions.payment_amount is NOT touched — manual refund, no double count.
+}
+
+vars:pre-request {
+  transaction_id: f5c8ffaf-54e6-413f-a3fa-71c9c67ee176
+}
+
+tests {
+  test('switched to cash and paid', () => {
+    expect(res.status).to.equal(200);
+    expect(res.body.data.method).to.equal('cash');
+    expect(res.body.data.status).to.equal('paid');
+  });
+}

@@ -89,7 +89,7 @@ type PatchProductRequest struct {
 // (docs/api.md § Business endpoints), not a plain insert: it validates stock,
 // writes items and movements, and rebuilds products.stock.
 type TransactionUseCase interface {
-	List(ctx context.Context, page, limit int) (*TransactionListResult, error)
+	List(ctx context.Context, page, limit int, status string) (*TransactionListResult, error)
 	Create(ctx context.Context, req *CreateTransactionRequest) (*Transaction, error)
 	Get(ctx context.Context, id uuid.UUID) (*Transaction, error)
 	Patch(ctx context.Context, id uuid.UUID, req *PatchTransactionRequest) (*Transaction, error)
@@ -134,16 +134,22 @@ type CreateTransactionRequest struct {
 	TotalAmount   int64
 	PaymentAmount int64
 	ChangeAmount  int64
+	Method        string
 	Note          *string
 	Items         []CreateTransactionItemRequest
 }
 
 // PatchTransactionRequest is partial: a nil field keeps the stored value. Items
 // are not patchable here — edit them through /transaction-items.
+//
+// Method only moves non_cash→cash, and only while the sale is not paid: that is
+// the manual recovery path when the gateway attempt fails and the customer pays
+// cash.
 type PatchTransactionRequest struct {
 	TotalAmount   *int64
 	PaymentAmount *int64
 	ChangeAmount  *int64
+	Method        *string
 	Note          *string
 }
 
@@ -216,6 +222,7 @@ type PatchDebtRequest struct {
 type CreateDebtPaymentRequest struct {
 	DebtID         uuid.UUID
 	Amount         int64
+	Method         string
 	Note           *string
 	CreateCashFlow bool
 }
@@ -229,6 +236,32 @@ type PatchDebtPaymentRequest struct {
 // flow from docs/api.md § Business endpoints: it validates the movement type and
 // the repository applies the delta and appends the movement atomically,
 // recomputing products.stock from the movement sum.
+type PaymentUseCase interface {
+	CreateSnap(ctx context.Context, req *CreatePaymentRequest) (*PaymentResult, error)
+	Get(ctx context.Context, id uuid.UUID) (*Payment, error)
+	List(ctx context.Context, page, limit int, targetType string, targetID *uuid.UUID) (*PaymentListResult, error)
+	// Verify re-queries Midtrans and returns the response verbatim, so a payment
+	// row can be proven against the dashboard instead of trusted.
+	Verify(ctx context.Context, id uuid.UUID) (map[string]any, error)
+	HandleNotification(ctx context.Context, raw map[string]interface{}) error
+}
+
+type CreatePaymentRequest struct {
+	TargetType string
+	TargetID   uuid.UUID
+}
+
+type PaymentResult struct {
+	Payment     *Payment
+	RedirectURL string
+	SnapToken   string
+}
+
+type PaymentListResult struct {
+	Data []*Payment
+	Meta ProductListMeta
+}
+
 type StockMovementUseCase interface {
 	List(ctx context.Context, page, limit int, productBarcode string) (*StockMovementListResult, error)
 	Create(ctx context.Context, req *CreateStockMovementRequest) (*StockMovement, error)

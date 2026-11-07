@@ -183,4 +183,24 @@ func SetupRouter(e *echo.Echo, db *gorm.DB, cfg *config.Config, pub *kafka.Produ
 	stockMovementGroup.GET("/:id", stockMovementHandler.Get)
 	stockMovementGroup.PATCH("/:id", stockMovementHandler.Patch)
 	stockMovementGroup.DELETE("/:id", stockMovementHandler.Delete)
+
+	// -------------------------------------------------------------
+	// 7. Payment Domain Wiring & Routing
+	// -------------------------------------------------------------
+	paymentRepo := repository.NewPaymentRepository(db)
+	paymentUsecase := usecase.NewPaymentUsecase(paymentRepo, debtRepo, transactionRepo, debtPaymentUsecase, pub, cfg.MidtransServerKey, cfg.MidtransEnvironment)
+	paymentHandler := NewPaymentHandler(paymentUsecase)
+
+	paymentGroup := v1.Group("/payments")
+	paymentGroup.Use(requireAuth)
+	paymentGroup.Use(middleware.TimeoutMiddleware(10 * time.Second))
+
+	paymentGroup.POST("", paymentHandler.Create)
+	// Static list before /:id, registration order decides matching.
+	paymentGroup.GET("", paymentHandler.List)
+	paymentGroup.GET("/:id", paymentHandler.Get)
+
+	// Notification is public — Midtrans does not carry an auth token. Static
+	// route first so it is not swallowed by /:id (cf. low-stock).
+	v1.POST("/payments/notification", paymentHandler.Notification)
 }

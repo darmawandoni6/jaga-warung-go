@@ -23,6 +23,7 @@ body:json {
     "total_amount": 4000,
     "payment_amount": 5000,
     "change_amount": 1000,
+    "method": "cash",
     "items": [
       {
         "product_barcode": "{{product_barcode}}",
@@ -43,6 +44,8 @@ tests {
     expect(res.status).to.equal(201);
   });
   if (res.status === 201) {
+    expect(res.body.data.method).to.equal('cash');
+    expect(res.body.data.status).to.equal('paid');
     bru.setVar('transaction_id', res.body.data.id);
   }
 }

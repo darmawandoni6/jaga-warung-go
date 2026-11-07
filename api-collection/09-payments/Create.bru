@@ -1,0 +1,51 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/v1/payments
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "target_type": "transaction",
+    "target_id": "{{transaction_id}}"
+  }
+}
+
+tests {
+  test('payment created', () => {
+    expect(res.status).to.equal(201);
+  });
+  if (res.status === 201) {
+    bru.setVar('qris_payment_id', res.body.data.id);
+    bru.setVar('order_id', res.body.data.order_id);
+  }
+}
+
+docs {
+  Creates one Midtrans QRIS attempt for the target.
+  
+  target_type: "transaction" | "debt"
+  target_id:   transactions.id or debts.id
+  
+  Returns 409 already_paid when the transaction/debt is already settled.
+  Returns 503 midtrans_not_configured when MIDTRANS_SERVER_KEY is empty.
+  A retry within 15 minutes returns the same order_id / snap_token.
+  A retry after that expires the old row and opens a new order.
+  
+  For a transaction, this also flips status pending→pending (expired→pending
+  when the previous attempt had failed).
+}

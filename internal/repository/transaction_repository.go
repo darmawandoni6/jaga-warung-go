@@ -23,9 +23,12 @@ func NewTransactionRepo(db *gorm.DB) domain.TransactionRepository {
 	return &transactionRepo{db: db}
 }
 
-func (r *transactionRepo) List(ctx context.Context, page, limit int) ([]*domain.Transaction, int64, error) {
+func (r *transactionRepo) List(ctx context.Context, page, limit int, status string) ([]*domain.Transaction, int64, error) {
 	q := r.db.WithContext(ctx).Model(&domain.Transaction{}).
 		Where("deleted_at IS NULL")
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
@@ -88,10 +91,12 @@ func (r *transactionRepo) Create(ctx context.Context, t *domain.Transaction, ite
 }
 
 // Update writes the mutable header columns only. created_at and the ID are
-// immutable; items are edited through the item repository.
+// immutable; items are edited through the item repository. Method/Status/PaidAt
+// must stay on this list: Updates drops anything not selected, so a missing
+// column is a silent no-op (that is how a qris→cash switch used to vanish).
 func (r *transactionRepo) Update(ctx context.Context, t *domain.Transaction) error {
 	res := r.db.WithContext(ctx).Model(t).
-		Select("TotalAmount", "PaymentAmount", "ChangeAmount", "Note").
+		Select("TotalAmount", "PaymentAmount", "ChangeAmount", "Method", "Status", "PaidAt", "Note").
 		Where("deleted_at IS NULL").
 		Updates(t)
 	if res.Error != nil {

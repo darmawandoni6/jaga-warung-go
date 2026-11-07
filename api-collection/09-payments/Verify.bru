@@ -1,0 +1,40 @@
+meta {
+  name: Verify
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/v1/payments/{{qris_payment_id}}?verify=true
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+docs {
+  Proof, not the stored row: re-queries Midtrans CheckTransaction and returns
+  the response verbatim (signature_key stripped).
+
+  Match these against the Midtrans dashboard:
+    order_id              = the id we generated and sent
+    transaction_id        = Midtrans' own transaction id
+    gross_amount          = must equal payments.amount
+    payment_type          = "qris"
+    transaction_status    = settlement / pending / expire / deny
+    settlement_time       = when the money landed
+
+  Returns 503 midtrans_not_configured when MIDTRANS_SERVER_KEY is empty.
+}
+
+vars:pre-request {
+  qris_payment_id: 00000000-0000-0000-0000-000000000000
+}
+
+tests {
+  test('returns 200', () => {
+    expect(res.status).to.equal(200);
+  });
+}

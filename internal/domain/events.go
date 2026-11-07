@@ -61,6 +61,9 @@ type TransactionEvent struct {
 	TotalAmount   int64                  `json:"total_amount"`
 	PaymentAmount int64                  `json:"payment_amount"`
 	ChangeAmount  int64                  `json:"change_amount"`
+	Method        string                 `json:"method"`
+	Status        string                 `json:"status"`
+	PaidAt        *time.Time             `json:"paid_at"`
 	Note          *string                `json:"note"`
 	CreatedAt     time.Time              `json:"created_at"`
 	Items         []TransactionItemEvent `json:"items"`
@@ -111,6 +114,9 @@ func NewTransactionEvent(t *Transaction) TransactionEvent {
 		TotalAmount:   t.TotalAmount,
 		PaymentAmount: t.PaymentAmount,
 		ChangeAmount:  t.ChangeAmount,
+		Method:        t.Method,
+		Status:        t.Status,
+		PaidAt:        t.PaidAt,
 		Note:          t.Note,
 		CreatedAt:     t.CreatedAt,
 		Items:         make([]TransactionItemEvent, len(t.Items)),

@@ -61,7 +61,7 @@ type CategoryRepository interface {
 // Delete touch only the header row; item changes go through
 // TransactionItemRepository, which owns the stock side effects.
 type TransactionRepository interface {
-	List(ctx context.Context, page, limit int) ([]*Transaction, int64, error)
+	List(ctx context.Context, page, limit int, status string) ([]*Transaction, int64, error)
 	Get(ctx context.Context, id uuid.UUID) (*Transaction, error)
 	Create(ctx context.Context, t *Transaction, items []*TransactionItem) error
 	Update(ctx context.Context, t *Transaction) error
@@ -105,6 +105,17 @@ type DebtPaymentRepository interface {
 // effect: every write re-derives products.stock from the movement sum, so the
 // cache always equals Σ non-deleted movements. Create is the business POST — it
 // locks the product, appends the movement and rebuilds the cache, atomically.
+type PaymentRepository interface {
+	Create(ctx context.Context, p *Payment) error
+	Get(ctx context.Context, id uuid.UUID) (*Payment, error)
+	GetByOrderID(ctx context.Context, orderID uuid.UUID) (*Payment, error)
+	// FindPendingByTarget returns the active attempt for one target so a retry
+	// reuses its Snap token instead of opening a second Midtrans order.
+	FindPendingByTarget(ctx context.Context, targetType string, targetID uuid.UUID) (*Payment, error)
+	List(ctx context.Context, page, limit int, targetType string, targetID *uuid.UUID) ([]*Payment, int64, error)
+	Update(ctx context.Context, p *Payment) error
+}
+
 type StockMovementRepository interface {
 	List(ctx context.Context, page, limit int, productBarcode string) ([]*StockMovement, int64, error)
 	Get(ctx context.Context, id uuid.UUID) (*StockMovement, error)

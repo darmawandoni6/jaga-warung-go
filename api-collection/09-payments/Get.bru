@@ -1,0 +1,30 @@
+meta {
+  name: Get
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/v1/payments/{{qris_payment_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+docs {
+  Stored row only: order_id, amount, status, debt_payment_id, and the Midtrans
+  fields last written by a notification or a verify call.
+}
+
+vars:pre-request {
+  qris_payment_id: 00000000-0000-0000-0000-000000000000
+}
+
+tests {
+  test('returns 200', () => {
+    expect(res.status).to.equal(200);
+  });
+}

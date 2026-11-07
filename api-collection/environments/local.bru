@@ -1,11 +1,14 @@
 vars {
   base_url: http://localhost:8080
-  phone: 081234567890
-  password: devsecret123
-  access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTM1OTU2MTMsImlhdCI6MTc5MzU5NDcxMywic3ViIjoiN2ZiMDk5ZTAtMjI2ZC00NGUxLWJiZWMtM2Y5NzI2YTJmMzQ2IiwidHlwZSI6ImFjY2VzcyJ9.x3UnB6NlxbN9PGEY6_Gvr4eZFk88RzJvs1_dmbgWqlA
-  refresh_token: bd70fe08b3f480aea8970eb047688dd448f53a4135ae3a2bb99e593bc1300ce7
+  phone: "{{admin_phone}}"
+  password: "{{admin_password}}"
+  access_token: ""
+  refresh_token: ""
   @number
   expires_in: 900
   @number
-  access_token_expired_at: 1793595614
+  access_token_expired_at: 1794036747
+  transaction_id: ad22abd2-ccb6-4ed9-9167-347e2faf7974
+  signature_key: ""
+  order_id: ""
 }
